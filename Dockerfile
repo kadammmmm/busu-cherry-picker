@@ -20,6 +20,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Create required directories if they don't exist
+RUN mkdir -p public config
+
 # Build the widget bundle
 RUN npm run build
 
@@ -50,11 +53,13 @@ RUN npm ci --only=production && \
 # Copy built assets from builder stage
 COPY --from=builder /app/src/build ./src/build
 
-# Copy server and static files
+# Copy server files
 COPY index.js ./
 COPY src/*.js ./src/
-COPY public ./public/
-COPY config ./config/
+
+# Copy folders from builder (which ensures they exist)
+COPY --from=builder /app/public ./public/
+COPY --from=builder /app/config ./config/
 
 # Set ownership
 RUN chown -R cherrypicker:nodejs /app
