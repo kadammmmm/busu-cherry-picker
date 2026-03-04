@@ -953,7 +953,7 @@ class CherryPickerWidget extends HTMLElement {
     this.store = new TaskStore();
     this.socket = null;
     this.pollInterval = null;
-    this.isConnected = false;
+    this._socketConnected = false;
     this.isLoading = true;
     this.hasError = false;
     this.errorMessage = '';
@@ -1066,13 +1066,13 @@ class CherryPickerWidget extends HTMLElement {
 
     this.socket.on('connect', () => {
       logger.info('Socket connected');
-      this.isConnected = true;
+      this._socketConnected = true;
       this.updateUI();
     });
 
     this.socket.on('disconnect', () => {
       logger.warn('Socket disconnected');
-      this.isConnected = false;
+      this._socketConnected = false;
       this.updateUI();
     });
 
@@ -1255,9 +1255,9 @@ class CherryPickerWidget extends HTMLElement {
               <div class="cp-subtitle">Voice Queue Selection</div>
             </div>
           </div>
-          <div class="cp-connection-status ${this.isConnected ? 'connected' : 'disconnected'}">
+          <div class="cp-connection-status ${this._socketConnected ? 'connected' : 'disconnected'}">
             <span class="cp-connection-dot"></span>
-            <span>${this.isConnected ? 'Live' : 'Offline'}</span>
+            <span>${this._socketConnected ? 'Live' : 'Offline'}</span>
           </div>
         </div>
         
@@ -1428,10 +1428,10 @@ class CherryPickerWidget extends HTMLElement {
   updateConnectionStatus() {
     const statusEl = this.shadowRoot.querySelector('.cp-connection-status');
     if (statusEl) {
-      statusEl.className = `cp-connection-status ${this.isConnected ? 'connected' : 'disconnected'}`;
+      statusEl.className = `cp-connection-status ${this._socketConnected ? 'connected' : 'disconnected'}`;
       statusEl.innerHTML = `
         <span class="cp-connection-dot"></span>
-        <span>${this.isConnected ? 'Live' : 'Offline'}</span>
+        <span>${this._socketConnected ? 'Live' : 'Offline'}</span>
       `;
     }
   }
