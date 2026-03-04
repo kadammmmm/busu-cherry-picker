@@ -1243,7 +1243,7 @@ class CherryPickerWidget extends HTMLElement {
       logger.info('Task claimed successfully:', taskId, result);
       
       // Refresh tasks immediately to get updated status
-      await this.loadTasks();
+      await this.fetchTasks();
       
       // Auto-remove from claiming after timeout
       setTimeout(() => {
