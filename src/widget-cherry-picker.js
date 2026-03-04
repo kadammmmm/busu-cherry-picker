@@ -1234,30 +1234,36 @@ class CherryPickerWidget extends HTMLElement {
   async claimTask(taskId) {
     if (this.claimingTasks.has(taskId)) return;
     
+    this.claimingTasks.add(taskId);
+    this.updateUI();
+    
     try {
-      this.claimingTasks.add(taskId);
-      this.updateUI();
-      
       logger.info('Attempting to claim task:', taskId);
-      const result = await this.apiService.assignTask(taskId);
-      logger.info('Task claimed successfully:', taskId, result);
       
-      // Refresh tasks immediately to get updated status
-      await this.fetchTasks();
+      const token = await this.apiService.getToken();
+      const response = await fetch(
+        `${this.apiService.region.api}/v1/tasks/${taskId}/assign`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
       
-      // Auto-remove from claiming after timeout
+      logger.info('Claim response status:', response.status);
+      
+      // Remove from claiming set after a delay to let polling update the status
       setTimeout(() => {
         this.claimingTasks.delete(taskId);
         this.updateUI();
-      }, 5000);
+      }, 3000);
       
     } catch (error) {
-      logger.error('Failed to claim task:', taskId, error.message);
+      logger.error('Failed to claim task:', taskId, error);
       this.claimingTasks.delete(taskId);
       this.updateUI();
-      
-      // Show user-friendly error
-      alert(`Failed to claim call: ${error.message}`);
     }
   }
 
