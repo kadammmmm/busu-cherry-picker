@@ -167,14 +167,24 @@ const styles = `
   .cp-powered-by {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     font-size: 11px;
     color: var(--cp-text-muted);
   }
 
-  .cp-bs-logo {
-    height: 16px;
-    width: auto;
+  .cp-bs-text {
+    font-weight: 600;
+    color: #1a4b7a;
+    letter-spacing: -0.3px;
+  }
+
+  :host([darkmode="true"]) .cp-bs-text {
+    color: #5a9fd4;
+  }
+
+  .cp-plus {
+    color: #e31937;
+    font-weight: 700;
   }
 
   .cp-subtitle {
@@ -835,6 +845,10 @@ class TaskStore {
     const { tasks, filters, callerIds } = this.getState();
     return tasks
       .filter(task => {
+        // Only show tasks that have been assigned to a queue
+        if (!task.queue?.id && !task.queue?.name) {
+          return false;
+        }
         const status = this.normalizeStatus(task.status);
         return filters[status];
       })
@@ -853,6 +867,10 @@ class TaskStore {
   getTaskCounts() {
     const counts = { queued: 0, assigned: 0, abandoned: 0, completed: 0 };
     this.tasks.forEach(task => {
+      // Only count tasks that have been assigned to a queue
+      if (!task.queue?.id && !task.queue?.name) {
+        return;
+      }
       const status = this.normalizeStatus(task.status);
       if (counts.hasOwnProperty(status)) {
         counts[status]++;
@@ -1220,20 +1238,26 @@ class CherryPickerWidget extends HTMLElement {
       this.claimingTasks.add(taskId);
       this.updateUI();
       
-      await this.apiService.assignTask(taskId);
+      logger.info('Attempting to claim task:', taskId);
+      const result = await this.apiService.assignTask(taskId);
+      logger.info('Task claimed successfully:', taskId, result);
       
-      logger.info('Task claimed:', taskId);
+      // Refresh tasks immediately to get updated status
+      await this.loadTasks();
       
       // Auto-remove from claiming after timeout
       setTimeout(() => {
         this.claimingTasks.delete(taskId);
         this.updateUI();
-      }, 10000);
+      }, 5000);
       
     } catch (error) {
-      logger.error('Failed to claim task:', error);
+      logger.error('Failed to claim task:', taskId, error.message);
       this.claimingTasks.delete(taskId);
       this.updateUI();
+      
+      // Show user-friendly error
+      alert(`Failed to claim call: ${error.message}`);
     }
   }
 
@@ -1291,13 +1315,7 @@ class CherryPickerWidget extends HTMLElement {
             <div class="cp-branding">
               <div class="cp-title">Cherry Picker</div>
               <div class="cp-powered-by">
-                powered by
-                <svg class="cp-bs-logo" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 8h18c3 0 5.5 2 5.5 5.5S26 19 23 19h-8v12H5V8zm10 6v5h5c1.5 0 2.5-1 2.5-2.5S21.5 14 20 14h-5z" fill="#1a4b7a"/>
-                  <path d="M50 8h18c3 0 5.5 2 5.5 5.5 0 2-1 3.5-2.5 4.5 2 1 3.5 3 3.5 5.5 0 3.5-2.5 5.5-5.5 5.5H50V8zm10 6v4h5c1.5 0 2.5-.8 2.5-2s-1-2-2.5-2h-5zm0 9v5h6c1.5 0 2.5-1 2.5-2.5S67.5 23 66 23h-6z" fill="#1a4b7a"/>
-                  <path d="M32 14l8 8-8 8" fill="none" stroke="#e31937" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                  <text x="78" y="26" font-family="Arial, sans-serif" font-size="10" fill="#1a4b7a">+s</text>
-                </svg>
+                powered by <span class="cp-bs-text">bucher<span class="cp-plus">+</span>suter</span>
               </div>
             </div>
           </div>
