@@ -7,6 +7,7 @@
  */
 
 import { Desktop } from "@wxcc-desktop/sdk";
+import { io } from "socket.io-client";
 
 // =============================================================================
 // CONSTANTS & CONFIGURATION

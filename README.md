@@ -1,8 +1,4 @@
-# 🍒 WxCC Voice Cherry Picker Widget
-
-<p align="center">
-  <img src="docs/images/cherry-picker-logo.svg" alt="Cherry Picker Logo" width="120" />
-</p>
+# 🍒 BuSu Voice Cherry Picker Widget
 
 <p align="center">
   <strong>A production-ready Webex Contact Center widget for voice queue cherry-picking</strong>
@@ -21,6 +17,8 @@
 ## Overview
 
 The Cherry Picker Widget enables Webex Contact Center agents to view and selectively claim voice calls from the queue, rather than waiting for automatic distribution. This provides greater flexibility in high-skill, specialized support scenarios.
+
+**Live Demo URL:** `https://busu-cherry-picker.onrender.com`
 
 ### Use Cases
 
@@ -69,8 +67,8 @@ The Cherry Picker Widget enables Webex Contact Center agents to view and selecti
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/bucher-suter/wxcc-cherry-picker.git
-cd wxcc-cherry-picker
+git clone https://github.com/kadammmmm/busu-cherry-picker.git
+cd busu-cherry-picker
 npm install
 ```
 
@@ -96,37 +94,46 @@ Upload the desktop layout JSON and configure your flow to send data to the widge
 
 ## Installation
 
-### Option A: Docker (Recommended)
+### Option A: Deploy to Render.com (Recommended)
+
+1. Fork this repository
+2. Connect to Render.com
+3. Deploy as a Web Service
+4. Set environment variables
+
+See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for detailed instructions.
+
+### Option B: Docker
 
 ```bash
 # Build image
-docker build -t wxcc-cherry-picker .
+docker build -t busu-cherry-picker .
 
 # Run container
 docker run -d \
   -p 5000:5000 \
   -e HOST_URI=https://your-domain.com \
   -e CORS_ORIGINS=https://desktop.wxcc-us1.cisco.com \
-  wxcc-cherry-picker
+  busu-cherry-picker
 ```
 
-### Option B: Docker Compose
+### Option C: Docker Compose
 
 ```bash
 docker-compose up -d
 ```
 
-### Option C: Manual Installation
+### Option D: Manual Installation
 
 ```bash
 # Install dependencies
-npm ci
+npm install
 
 # Build widget bundle
 npm run build
 
 # Start server
-NODE_ENV=production npm start
+npm start
 ```
 
 ---
@@ -175,59 +182,65 @@ Enable telephony manual assignment:
 Add an HTTP Request node to your flow:
 
 **Method**: POST  
-**URL**: `https://your-server.com/`  
+**URL**: `https://busu-cherry-picker.onrender.com/`  
 **Body**:
 ```json
-{
-  "ANI": "{{NewPhoneContact.ANI}}",
-  "DNIS": "{{NewPhoneContact.DNIS}}",
-  "InteractionId": "{{NewPhoneContact.InteractionId}}",
-  "OrgId": "{{NewPhoneContact.OrgId}}",
-  "Headers": "{{NewPhoneContact.Headers}}",
-  "EntryPointId": "{{NewPhoneContact.EntryPointId}}",
-  "FlowId": "{{NewPhoneContact.FlowId}}"
-}
+{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","CallbackType":"{{NewPhoneContact.CallbackType}}","CallbackReason":"{{NewPhoneContact.CallbackReason}}"}
 ```
 
 ### Desktop Layout
 
-Update the `script` URL in `config/desktop-layout.json`:
+Add the Cherry Picker widget to your desktop layout navigation:
 
 ```json
 {
-  "comp": "cherry-picker-widget",
-  "script": "https://your-server.com/build/bundle.js"
+  "nav": {
+    "label": "Cherry Picker",
+    "icon": "call-voicemail",
+    "iconType": "momentum",
+    "navigateTo": "cherry-picker",
+    "align": "top"
+  },
+  "page": {
+    "id": "cherry-picker",
+    "widgets": {
+      "comp2": {
+        "comp": "div",
+        "style": {
+          "height": "100%",
+          "overflow": "scroll"
+        },
+        "children": [
+          {
+            "comp": "sa-ds-voice-sdk",
+            "script": "https://busu-cherry-picker.onrender.com/build/bundle.js",
+            "wrapper": {
+              "title": "Cherry Picker",
+              "maximizeAreaName": "app-maximize-area"
+            },
+            "attributes": {
+              "darkmode": "$STORE.app.darkMode"
+            },
+            "properties": {
+              "accessToken": "$STORE.auth.accessToken",
+              "outdialEp": "$STORE.agent.outDialEp"
+            }
+          }
+        ]
+      }
+    },
+    "layout": {
+      "areas": [["comp2"]],
+      "size": {
+        "cols": [1],
+        "rows": [1]
+      }
+    }
+  }
 }
 ```
 
 Upload to Control Hub: **Contact Center > Desktop Layouts**
-
----
-
-## Widget Properties
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `darkmode` | string | "false" | Enable dark theme |
-| `region` | string | "us1" | WxCC API region |
-| `refreshinterval` | string | "5" | Polling interval (seconds) |
-
-### Layout Example
-
-```json
-{
-  "comp": "cherry-picker-widget",
-  "script": "https://your-host.com/build/bundle.js",
-  "attributes": {
-    "darkmode": "$STORE.app.darkMode",
-    "region": "us1",
-    "refreshinterval": "5"
-  },
-  "properties": {
-    "accessToken": "$STORE.auth.accessToken"
-  }
-}
-```
 
 ---
 
@@ -307,13 +320,6 @@ npm test
 npm run test:coverage
 ```
 
-### Linting
-
-```bash
-npm run lint
-npm run lint:fix
-```
-
 ---
 
 ## Troubleshooting
@@ -337,9 +343,9 @@ npm run lint:fix
 
 ### Debug Mode
 
-Enable debug logging:
-```bash
-LOG_LEVEL=debug npm start
+Enable debug logging in your `.env`:
+```ini
+LOG_LEVEL=debug
 ```
 
 ---
@@ -385,6 +391,14 @@ LOG_LEVEL=debug npm start
 
 ---
 
+## Documentation
+
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Full setup instructions
+- [Developer Setup Guide](docs/DEVELOPER_SETUP_GUIDE.md) - Local development setup
+- [Creating GitHub Repo](docs/CREATING_GITHUB_REPO.md) - Repository setup
+
+---
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -393,9 +407,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
+- 🐛 Issues: [GitHub Issues](https://github.com/kadammmmm/busu-cherry-picker/issues)
 - 📧 Email: support@bucher-suter.com
-- 🐛 Issues: [GitHub Issues](https://github.com/bucher-suter/wxcc-cherry-picker/issues)
-- 📖 Docs: [Documentation Site](https://docs.bucher-suter.com/cherry-picker)
 
 ---
 
