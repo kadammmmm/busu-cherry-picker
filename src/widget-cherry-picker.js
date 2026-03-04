@@ -135,6 +135,12 @@ const styles = `
     gap: 12px;
   }
 
+  .cp-branding {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .cp-logo {
     width: 32px;
     height: 32px;
@@ -152,9 +158,23 @@ const styles = `
   }
 
   .cp-title {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     color: var(--cp-text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  .cp-powered-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--cp-text-muted);
+  }
+
+  .cp-bs-logo {
+    height: 16px;
+    width: auto;
   }
 
   .cp-subtitle {
@@ -900,10 +920,13 @@ class WxCCApiService {
     );
 
     if (!response.ok) {
-      throw new Error(`Assign error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Assign error: ${response.status} - ${errorText}`);
     }
 
-    return response.json();
+    // Handle empty response (204 No Content or empty body)
+    const text = await response.text();
+    return text ? JSON.parse(text) : { success: true };
   }
 }
 
@@ -1030,7 +1053,10 @@ class CherryPickerWidget extends HTMLElement {
   }
 
   initializeServices() {
-    const hostUri = process.env.HOST_URI || window.location.origin;
+    // Get host URI from widget attribute, environment, or default to Render deployment
+    const hostUri = this.getAttribute('hosturi') 
+      || process.env.HOST_URI 
+      || 'https://busu-cherry-picker.onrender.com';
     
     this.apiService = new WxCCApiService(this.config);
     this.callerIdService = new CallerIdService(hostUri);
@@ -1052,11 +1078,17 @@ class CherryPickerWidget extends HTMLElement {
   }
 
   initializeSocket() {
-    const hostUri = process.env.HOST_URI || window.location.origin;
+    // Get host URI from widget attribute, environment, or default to Render deployment
+    const hostUri = this.getAttribute('hosturi') 
+      || process.env.HOST_URI 
+      || 'https://busu-cherry-picker.onrender.com';
+    
+    logger.info('Connecting to socket server:', hostUri);
+    
     const profile = Desktop.agentContact.SERVICE.conf.profile;
 
     this.socket = io(hostUri, {
-      withCredentials: true,
+      transports: ['websocket', 'polling'],
       auth: {
         agentId: profile.agentId,
         agentName: profile.agentName,
@@ -1068,13 +1100,19 @@ class CherryPickerWidget extends HTMLElement {
     this.socket.on('connect', () => {
       logger.info('Socket connected');
       this._socketConnected = true;
-      this.updateUI();
+      this.updateConnectionStatus();
     });
 
     this.socket.on('disconnect', () => {
       logger.warn('Socket disconnected');
       this._socketConnected = false;
-      this.updateUI();
+      this.updateConnectionStatus();
+    });
+
+    this.socket.on('connect_error', (error) => {
+      logger.warn('Socket connection error:', error.message);
+      this._socketConnected = false;
+      this.updateConnectionStatus();
     });
 
     this.socket.on('message', (data) => {
@@ -1250,10 +1288,17 @@ class CherryPickerWidget extends HTMLElement {
       <div class="cherry-picker">
         <div class="cp-header">
           <div class="cp-header-left">
-            <div class="cp-logo">${ICONS.queue}</div>
-            <div>
+            <div class="cp-branding">
               <div class="cp-title">Cherry Picker</div>
-              <div class="cp-subtitle">Voice Queue Selection</div>
+              <div class="cp-powered-by">
+                powered by
+                <svg class="cp-bs-logo" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 8h18c3 0 5.5 2 5.5 5.5S26 19 23 19h-8v12H5V8zm10 6v5h5c1.5 0 2.5-1 2.5-2.5S21.5 14 20 14h-5z" fill="#1a4b7a"/>
+                  <path d="M50 8h18c3 0 5.5 2 5.5 5.5 0 2-1 3.5-2.5 4.5 2 1 3.5 3 3.5 5.5 0 3.5-2.5 5.5-5.5 5.5H50V8zm10 6v4h5c1.5 0 2.5-.8 2.5-2s-1-2-2.5-2h-5zm0 9v5h6c1.5 0 2.5-1 2.5-2.5S67.5 23 66 23h-6z" fill="#1a4b7a"/>
+                  <path d="M32 14l8 8-8 8" fill="none" stroke="#e31937" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="78" y="26" font-family="Arial, sans-serif" font-size="10" fill="#1a4b7a">+s</text>
+                </svg>
+              </div>
             </div>
           </div>
           <div class="cp-connection-status ${this._socketConnected ? 'connected' : 'disconnected'}">
@@ -1365,12 +1410,81 @@ class CherryPickerWidget extends HTMLElement {
       return;
     }
     
-    taskListEl.innerHTML = tasks.map(task => this.renderTaskCard(task)).join('');
+    // Smart update: only update changed tasks to prevent flickering
+    const existingCards = taskListEl.querySelectorAll('.cp-task-card');
+    const existingTaskIds = new Set(Array.from(existingCards).map(c => c.dataset.taskId));
+    const newTaskIds = new Set(tasks.map(t => t.id));
     
-    // Bind claim button events
-    taskListEl.querySelectorAll('.cp-claim-btn').forEach(btn => {
-      btn.onclick = () => this.claimTask(btn.dataset.taskId);
+    // Remove cards that no longer exist
+    existingCards.forEach(card => {
+      if (!newTaskIds.has(card.dataset.taskId)) {
+        card.remove();
+      }
     });
+    
+    // Update or add cards
+    tasks.forEach((task, index) => {
+      const existingCard = taskListEl.querySelector(`[data-task-id="${task.id}"]`);
+      
+      if (existingCard) {
+        // Update only the dynamic parts (time, status) without replacing entire card
+        this.updateTaskCardInPlace(existingCard, task);
+      } else {
+        // Insert new card at correct position
+        const newCardHtml = this.renderTaskCard(task);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newCardHtml;
+        const newCard = tempDiv.firstElementChild;
+        
+        const nextSibling = taskListEl.children[index];
+        if (nextSibling) {
+          taskListEl.insertBefore(newCard, nextSibling);
+        } else {
+          taskListEl.appendChild(newCard);
+        }
+        
+        // Bind claim button event for new card
+        const claimBtn = newCard.querySelector('.cp-claim-btn');
+        if (claimBtn) {
+          claimBtn.onclick = () => this.claimTask(claimBtn.dataset.taskId);
+        }
+      }
+    });
+  }
+
+  updateTaskCardInPlace(card, task) {
+    // Update time display
+    const timeEl = card.querySelector('.cp-task-time');
+    if (timeEl) {
+      timeEl.textContent = formatDuration(Date.now() - task.createdTime);
+    }
+    
+    // Update wait time in meta
+    const waitMeta = card.querySelectorAll('.cp-task-meta-item')[1];
+    if (waitMeta) {
+      const span = waitMeta.querySelector('span');
+      if (span) span.textContent = `Wait: ${formatDuration(Date.now() - task.createdTime)}`;
+    }
+    
+    // Update status if changed
+    const statusEl = card.querySelector('.cp-task-status');
+    const currentStatus = this.store.normalizeStatus(task.status);
+    if (statusEl && !statusEl.classList.contains(currentStatus)) {
+      statusEl.className = `cp-task-status ${currentStatus}`;
+      statusEl.innerHTML = `<span class="cp-task-status-dot"></span>${capitalizeFirst(currentStatus)}`;
+    }
+    
+    // Update claiming state
+    const isClaiming = this.claimingTasks.has(task.id);
+    const claimBtn = card.querySelector('.cp-claim-btn');
+    if (claimBtn) {
+      claimBtn.classList.toggle('loading', isClaiming);
+      claimBtn.disabled = isClaiming;
+    }
+    
+    // Update faded state based on claimability
+    const isClaimable = ['queued', 'created'].includes(task.status);
+    card.classList.toggle('faded', !isClaimable);
   }
 
   renderTaskCard(task) {
