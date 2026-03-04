@@ -1240,19 +1240,16 @@ class CherryPickerWidget extends HTMLElement {
     try {
       logger.info('Attempting to claim task:', taskId);
       
-      const token = await this.apiService.getToken();
-      const response = await fetch(
-        `${this.apiService.region.api}/v1/tasks/${taskId}/assign`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      // Use exact same approach as Cisco's widget
+      const assignResp = await fetch(`https://api.wxcc-us1.cisco.com/v1/tasks/${taskId}/assign`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${window.myAgentService.webex.token.access_token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
       
-      logger.info('Claim response status:', response.status);
+      logger.info('Claim response status:', assignResp.status);
       
       // Remove from claiming set after a delay to let polling update the status
       setTimeout(() => {
