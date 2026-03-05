@@ -200,7 +200,7 @@ Add the Call Selector widget to your desktop layout JSON:
     "widgets": {
       "selector-area": {
         "comp": "call-selector-widget",
-        "script": "https://busu-cherry-picker.onrender.com/build/bundle.js",
+        "script": "https://YOUR-APP-HERE.onrender.com/build/bundle.js",
         "attributes": {
           "darkmode": "$STORE.app.darkMode"
         },
