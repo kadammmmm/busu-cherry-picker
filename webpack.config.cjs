@@ -6,7 +6,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const config = {
   mode: isProduction ? "production" : "development",
   
-  entry: "./src/widget-cherry-picker.js",
+  entry: "./src/widget-call-selector.js",
   
   output: {
     path: path.resolve(__dirname, "src/build"),

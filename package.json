@@ -1,7 +1,7 @@
 {
-  "name": "busu-cherry-picker",
-  "version": "2.0.0",
-  "description": "Production-ready WxCC Voice Queue Cherry Picker Widget - A B+S Solutions Product",
+  "name": "busu-call-selector",
+  "version": "3.0.0",
+  "description": "WxCC Voice Queue Call Selector Widget - Select and claim calls from queue - A B+S Solutions Product",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "webex",
     "contact-center",
     "wxcc",
-    "cherry-picker",
+    "call-selector",
     "widget",
     "cisco",
     "agent-desktop"
