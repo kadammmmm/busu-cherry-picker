@@ -1,7 +1,7 @@
-# 🍒 BuSu Voice Cherry Picker Widget
+# 📞 Call Selector Widget
 
 <p align="center">
-  <strong>A production-ready Webex Contact Center widget for voice queue cherry-picking</strong>
+  <strong>A production-ready Webex Contact Center widget for voice queue selection</strong>
 </p>
 
 <p align="center">
@@ -9,6 +9,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#custom-fields">Custom Fields</a> •
   <a href="#api-reference">API</a>
 </p>
 
@@ -16,9 +17,9 @@
 
 ## Overview
 
-The Cherry Picker Widget enables Webex Contact Center agents to view and selectively claim voice calls from the queue, rather than waiting for automatic distribution. This provides greater flexibility in high-skill, specialized support scenarios.
+The Call Selector Widget enables Webex Contact Center agents to view and selectively claim voice calls from the queue, rather than waiting for automatic distribution. Calls are grouped by queue for easy navigation, and custom fields can be displayed for each call.
 
-**Live Demo URL:** `https://busu-cherry-picker.onrender.com`
+**Live Deployment:** `https://busu-cherry-picker.onrender.com`
 
 ### Use Cases
 
@@ -34,9 +35,17 @@ The Cherry Picker Widget enables Webex Contact Center agents to view and selecti
 ### Core Functionality
 - ✅ Real-time queue visibility
 - ✅ One-click call claiming
+- ✅ **Calls grouped by queue** for easy navigation
+- ✅ Collapsible queue sections
 - ✅ Instant call notifications via WebSocket
 - ✅ Filter by call status (Queued, Assigned, Abandoned, Completed)
 - ✅ Caller ID display with name lookup
+
+### Custom Fields Support
+- ✅ Display priority, customer name, account number, call reason
+- ✅ Configurable via desktop layout or flow variables
+- ✅ Priority-based color coding (high = red, medium = yellow)
+- ✅ Support for any custom field passed from flow
 
 ### Technical Capabilities
 - ✅ Multi-region support (US, EU, ANZ, CA, JP, SG)
@@ -45,13 +54,6 @@ The Cherry Picker Widget enables Webex Contact Center agents to view and selecti
 - ✅ Production-ready with health checks
 - ✅ Docker containerization
 - ✅ Comprehensive logging
-
-### User Experience
-- ✅ Modern, professional UI design
-- ✅ Real-time wait time display
-- ✅ Visual status indicators
-- ✅ Empty and error state handling
-- ✅ Loading states for all actions
 
 ---
 
@@ -88,7 +90,7 @@ npm start
 
 ### 4. Configure WxCC
 
-Upload the desktop layout JSON and configure your flow to send data to the widget.
+See the [Configuration](#configuration) section below.
 
 ---
 
@@ -96,25 +98,30 @@ Upload the desktop layout JSON and configure your flow to send data to the widge
 
 ### Option A: Deploy to Render.com (Recommended)
 
-1. Fork this repository
-2. Connect to Render.com
-3. Deploy as a Web Service
-4. Set environment variables
+1. Fork this repository to your GitHub account
+2. Create an account at [Render.com](https://render.com)
+3. Create a new **Web Service** and connect your forked repo
+4. Render will auto-detect the Dockerfile
+5. Set environment variables:
 
-See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for detailed instructions.
+| Variable | Value |
+|----------|-------|
+| `PORT` | `5000` |
+| `HOST_URI` | `https://your-app-name.onrender.com` |
+| `CORS_ORIGINS` | `https://desktop.wxcc-us1.cisco.com` |
+
+6. Deploy and verify at `https://your-app-name.onrender.com/health`
 
 ### Option B: Docker
 
 ```bash
-# Build image
-docker build -t busu-cherry-picker .
+docker build -t call-selector .
 
-# Run container
 docker run -d \
   -p 5000:5000 \
   -e HOST_URI=https://your-domain.com \
   -e CORS_ORIGINS=https://desktop.wxcc-us1.cisco.com \
-  busu-cherry-picker
+  call-selector
 ```
 
 ### Option C: Docker Compose
@@ -126,13 +133,8 @@ docker-compose up -d
 ### Option D: Manual Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Build widget bundle
 npm run build
-
-# Start server
 npm start
 ```
 
@@ -140,99 +142,80 @@ npm start
 
 ## Configuration
 
-### Environment Variables
+### 1. Queue Configuration
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | 5000 | Server port |
-| `HOST_URI` | Yes | - | Public URL of the server |
-| `CORS_ORIGINS` | No | WxCC domains | Allowed CORS origins |
-| `CACHE_TTL` | No | 3600 | Caller ID cache TTL (seconds) |
-| `LOG_LEVEL` | No | info | Logging level |
+Enable manual assignment on your queue via API:
 
-### WxCC Queue Configuration
-
-Enable manual assignment on your queue:
-
-```json
-{
-  "manuallyAssignable": true
-}
+```bash
+curl --request PUT \
+  --url 'https://api.wxcc-us1.cisco.com/organization/{orgId}/contact-service-queue/{queueId}' \
+  --header 'Authorization: Bearer {token}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "manuallyAssignable": true
+  }'
 ```
 
-Use the [Update Queue API](https://developer.webex.com/webex-contact-center/docs/api/v1/contact-service-queues/update-specific-contact-service-queue-by-id) to configure.
-
-### Multimedia Profile Configuration
+### 2. Multimedia Profile Configuration
 
 Enable telephony manual assignment:
 
-```json
-{
-  "manuallyAssignable": {
-    "telephony": 1,
-    "chat": 0,
-    "email": 0,
-    "social": 0
-  }
-}
+```bash
+curl --request PUT \
+  --url 'https://api.wxcc-us1.cisco.com/organization/{orgId}/multimedia-profile/{mmpId}' \
+  --header 'Authorization: Bearer {token}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "manuallyAssignable": {
+      "telephony": 1,
+      "chat": 0,
+      "email": 0,
+      "social": 0
+    }
+  }'
 ```
 
-### Flow Configuration
+### 3. Agent Configuration
 
-Add an HTTP Request node to your flow:
+Ensure your agent:
+- Is assigned to the Multimedia Profile with `manuallyAssignable.telephony: 1`
+- Is on a Team that is assigned to the queue
+- Is logged in with a valid DN or WebRTC
 
-**Method**: POST  
-**URL**: `https://busu-cherry-picker.onrender.com/`  
-**Body**:
-```json
-{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","CallbackType":"{{NewPhoneContact.CallbackType}}","CallbackReason":"{{NewPhoneContact.CallbackReason}}"}
-```
+### 4. Desktop Layout Configuration
 
-### Desktop Layout
-
-Add the Cherry Picker widget to your desktop layout navigation:
+Add the Call Selector widget to your desktop layout JSON:
 
 ```json
 {
   "nav": {
-    "label": "Cherry Picker",
+    "label": "Call Selector",
     "icon": "call-voicemail",
     "iconType": "momentum",
-    "navigateTo": "cherry-picker",
+    "navigateTo": "call-selector",
     "align": "top"
   },
   "page": {
-    "id": "cherry-picker",
+    "id": "call-selector",
     "widgets": {
-      "comp2": {
-        "comp": "div",
-        "style": {
-          "height": "100%",
-          "overflow": "scroll"
+      "selector-area": {
+        "comp": "call-selector-widget",
+        "script": "https://busu-cherry-picker.onrender.com/build/bundle.js",
+        "attributes": {
+          "darkmode": "$STORE.app.darkMode"
         },
-        "children": [
-          {
-            "comp": "sa-ds-voice-sdk",
-            "script": "https://busu-cherry-picker.onrender.com/build/bundle.js",
-            "wrapper": {
-              "title": "Cherry Picker",
-              "maximizeAreaName": "app-maximize-area"
-            },
-            "attributes": {
-              "darkmode": "$STORE.app.darkMode"
-            },
-            "properties": {
-              "accessToken": "$STORE.auth.accessToken",
-              "outdialEp": "$STORE.agent.outDialEp"
-            }
-          }
-        ]
+        "properties": {
+          "accessToken": "$STORE.auth.accessToken"
+        }
+      },
+      "main-area": {
+        "comp": "agentx-wc-interaction-control"
       }
     },
     "layout": {
-      "areas": [["comp2"]],
+      "areas": [["selector-area", "main-area"]],
       "size": {
-        "cols": [1],
+        "cols": ["30%", "70%"],
         "rows": [1]
       }
     }
@@ -241,6 +224,94 @@ Add the Cherry Picker widget to your desktop layout navigation:
 ```
 
 Upload to Control Hub: **Contact Center > Desktop Layouts**
+
+---
+
+## Custom Fields
+
+The Call Selector can display custom fields for each call (priority, customer name, account number, etc.). This requires sending the data from your flow to the Call Selector server.
+
+### Step 1: Add HTTP Request Node to Your Flow
+
+Add an HTTP Request node **after** your variables are set (e.g., after IVR data collection):
+
+| Setting | Value |
+|---------|-------|
+| **Method** | `POST` |
+| **URL** | `https://busu-cherry-picker.onrender.com/` |
+| **Content-Type** | `Application/JSON` |
+
+**Request Body:**
+```json
+{
+  "ANI": "{{NewPhoneContact.ANI}}",
+  "DNIS": "{{NewPhoneContact.DNIS}}",
+  "InteractionId": "{{NewPhoneContact.InteractionId}}",
+  "OrgId": "{{NewPhoneContact.OrgId}}",
+  "Headers": "{{NewPhoneContact.Headers}}",
+  "EntryPointId": "{{NewPhoneContact.EntryPointId}}",
+  "FlowId": "{{NewPhoneContact.FlowId}}",
+  "priority": "{{priority}}",
+  "customerName": "{{L_Caller_Name}}",
+  "accountNumber": "{{accountNumber}}",
+  "callReason": "{{L_Call_Reason}}",
+  "verifiedInIVR": "{{L_VerifiedInIVR}}"
+}
+```
+
+> **Note:** Replace the variable names with your actual flow variable names.
+
+### Step 2: Configure Display Fields in Desktop Layout
+
+Add the `displayfields` attribute to specify which fields to show:
+
+```json
+{
+  "comp": "call-selector-widget",
+  "script": "https://busu-cherry-picker.onrender.com/build/bundle.js",
+  "attributes": {
+    "darkmode": "$STORE.app.darkMode",
+    "displayfields": "[\"priority\", \"customerName\", \"callReason\"]"
+  }
+}
+```
+
+### Supported Field Names
+
+| Field Key | Display Label | Notes |
+|-----------|---------------|-------|
+| `priority` | Priority | Color-coded: high=red, medium=yellow |
+| `customerName` | Customer | Customer's name |
+| `accountNumber` | Account | Account number |
+| `callReason` | Reason | Reason for calling |
+| `customerId` | ID | Customer ID |
+| `segment` | Segment | Customer segment |
+| `language` | Language | Preferred language |
+| `region` | Region | Geographic region |
+| `productType` | Product | Product type |
+| `caseNumber` | Case # | Support case number |
+| `orderNumber` | Order # | Order number |
+
+You can also use any custom field name - it will be displayed with a capitalized label.
+
+---
+
+## Flow Configuration
+
+### Complete HTTP Request Body Template
+
+```json
+{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","priority":"{{priority}}","customerName":"{{customerName}}","accountNumber":"{{accountNumber}}","callReason":"{{callReason}}"}
+```
+
+### Flow Placement
+
+Place the HTTP Request node:
+1. **After** `NewPhoneContact` event
+2. **After** any `Set Variable` nodes that populate your custom fields
+3. **Before** the `Queue Contact` node
+
+Connect the error output of the HTTP Request to the Queue Contact node so calls aren't blocked if the server is unavailable.
 
 ---
 
@@ -257,7 +328,9 @@ Receive call data from WxCC flow.
   "ANI": "string",
   "DNIS": "string",
   "OrgId": "string",
-  "Headers": "string"
+  "Headers": "string",
+  "priority": "string",
+  "customerName": "string"
 }
 ```
 
@@ -277,7 +350,7 @@ Retrieve cached caller ID data.
 **Response:**
 ```json
 [
-  { "InteractionId": "id1", "ANI": "+15551234567", ... },
+  { "InteractionId": "id1", "ANI": "+15551234567", "customerName": "John" },
   { "InteractionId": "id2" }
 ]
 ```
@@ -290,56 +363,52 @@ Health check endpoint.
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-02-23T12:00:00.000Z",
+  "timestamp": "2026-03-04T12:00:00.000Z",
   "uptime": 3600,
-  "version": "2.0.0"
+  "version": "3.0.0"
 }
 ```
 
 ---
 
-## Development
+## Environment Variables
 
-### Local Development
-
-```bash
-# Start with hot-reload
-npm run dev
-
-# Build in watch mode
-npm run build:watch
-```
-
-### Testing
-
-```bash
-# Run tests
-npm test
-
-# With coverage
-npm run test:coverage
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 5000 | Server port |
+| `HOST_URI` | Yes | - | Public URL of the server |
+| `CORS_ORIGINS` | No | WxCC domains | Allowed CORS origins (comma-separated) |
+| `CACHE_TTL` | No | 3600 | Caller ID cache TTL in seconds |
+| `LOG_LEVEL` | No | info | Logging level (error, warn, info, debug) |
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
-
-**Widget not loading:**
-- Verify `script` URL is accessible
+### Widget not loading
+- Verify the `script` URL is accessible
 - Check browser console for CORS errors
-- Ensure HOST_URI matches your deployment
+- Ensure `HOST_URI` matches your deployment URL
 
-**No calls appearing:**
-- Verify flow HTTP Request is configured
+### "AGENT_CHANNEL_NOT_FOUND" error when claiming
+- Agent must be logged in with a valid DN or WebRTC
+- Verify agent's Multimedia Profile has `manuallyAssignable.telephony: 1`
+- Check that agent is on a Team assigned to the queue
+
+### Calls not appearing
+- Verify the flow HTTP Request is configured (if using custom fields)
 - Check server logs for incoming requests
 - Confirm queue has `manuallyAssignable: true`
 
-**Claim button not working:**
-- Verify agent has appropriate permissions
-- Check MMP has manual assignment enabled
-- Review browser console for API errors
+### Custom fields not showing
+- Verify HTTP Request node is in your flow and sends the fields
+- Check that `displayfields` attribute matches the field names in the HTTP body
+- Use camelCase field names (e.g., `customerName`, not `Customer Name`)
+
+### Connection shows "Offline"
+- Server might be starting up (Render.com free tier has cold starts)
+- Check that `HOST_URI` is set correctly
+- Verify WebSocket connection in browser Network tab
 
 ### Debug Mode
 
@@ -356,9 +425,9 @@ LOG_LEVEL=debug
 ┌─────────────────────────────────────────────────────────────┐
 │                    WxCC Agent Desktop                        │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │              Cherry Picker Widget                        ││
+│  │              Call Selector Widget                        ││
 │  │  ┌─────────────┐   ┌─────────────┐   ┌──────────────┐  ││
-│  │  │ Task Cards  │   │  Filters    │   │  Connection  │  ││
+│  │  │ Queue Groups│   │  Filters    │   │  Connection  │  ││
 │  │  └──────┬──────┘   └──────┬──────┘   └──────┬───────┘  ││
 │  │         │                 │                  │          ││
 │  │  ┌──────▼─────────────────▼──────────────────▼───────┐ ││
@@ -372,7 +441,7 @@ LOG_LEVEL=debug
 └───────────────────────────────────────────────┬────────────┘
                                                 │
                           ┌─────────────────────▼──────────────┐
-                          │       Cherry Picker Server         │
+                          │       Call Selector Server         │
                           │  ┌────────────┐  ┌──────────────┐  │
                           │  │ Express.js │  │  Socket.IO   │  │
                           │  └────────────┘  └──────────────┘  │
@@ -391,11 +460,55 @@ LOG_LEVEL=debug
 
 ---
 
-## Documentation
+## File Structure
 
-- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Full setup instructions
-- [Developer Setup Guide](docs/DEVELOPER_SETUP_GUIDE.md) - Local development setup
-- [Creating GitHub Repo](docs/CREATING_GITHUB_REPO.md) - Repository setup
+```
+busu-cherry-picker/
+├── src/
+│   └── widget-call-selector.js    # Main widget component
+├── config/
+│   └── desktop-layout.json        # Sample desktop layout
+├── docs/
+│   ├── DEPLOYMENT_GUIDE.md
+│   └── DEVELOPER_SETUP_GUIDE.md
+├── index.js                       # Express server
+├── package.json
+├── webpack.config.cjs
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+---
+
+## Development
+
+### Local Development
+
+```bash
+# Start with hot-reload
+npm run dev
+
+# Build in watch mode
+npm run build:watch
+```
+
+### Building
+
+```bash
+npm run build
+```
+
+---
+
+## Version History
+
+| Version | Changes |
+|---------|---------|
+| 3.0.0 | Renamed to Call Selector, queue grouping, custom fields support |
+| 2.0.0 | Production redesign, multi-region, dark mode, improved UI |
+| 1.0.0 | Initial release |
 
 ---
 
@@ -407,11 +520,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/kadammmmm/busu-cherry-picker/issues)
-- 📧 Email: support@bucher-suter.com
+- Issues: [GitHub Issues](https://github.com/kadammmmm/busu-cherry-picker/issues)
 
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://www.bucher-suter.com">Bucher + Suter</a>
+  Made with care by <a href="https://www.bucher-suter.com">bucher+suter</a>
 </p>
