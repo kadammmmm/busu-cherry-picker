@@ -1,6 +1,7 @@
 /**
  * Call Selector Backend Server
  * Production-ready Express + Socket.IO server for WxCC Call Selector widget
+ * @author Matt Kadas
  * @version 3.1.0
  */
 

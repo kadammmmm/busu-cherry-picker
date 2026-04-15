@@ -2,6 +2,7 @@
  * Call Selector Widget v3.0
  * A production-ready WxCC voice queue selection widget
  * 
+ * @author Matt Kadas
  * @version 3.1.0
  */
 
