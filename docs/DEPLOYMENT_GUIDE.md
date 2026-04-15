@@ -528,7 +528,6 @@ Replace `[your-app-name]` and `[your-region]` with your values:
 ## Support
 
 - **GitHub Issues**: https://github.com/kadammmmm/busu-cherry-picker/issues
-- **Email**: support@bucher-suter.com
 
 ---
 

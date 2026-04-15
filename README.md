@@ -635,7 +635,7 @@ npm run build
 
 | Version | Changes |
 |---------|---------|
-| 3.1.0 | Real-time abandon handling, race condition fix (in-flight guard), B+S brand theming, `showstatuses` / `refreshinterval` widget attributes, API key + rate limiting security |
+| 3.1.0 | Real-time abandon handling, race condition fix (in-flight guard), brand refresh, `showstatuses` / `refreshinterval` widget attributes, API key + rate limiting security |
 | 3.0.0 | Renamed to Call Selector, queue grouping, custom fields support |
 | 2.0.0 | Production redesign, multi-region, dark mode, improved UI |
 | 1.0.0 | Initial release |
@@ -652,8 +652,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - Issues: [GitHub Issues](https://github.com/kadammmmm/busu-cherry-picker/issues)
 
----
-
-<p align="center">
-  Made with care by <a href="https://www.bucher-suter.com">bucher+suter</a>
-</p>

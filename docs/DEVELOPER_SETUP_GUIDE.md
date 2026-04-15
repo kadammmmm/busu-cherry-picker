@@ -154,7 +154,7 @@ Create `package.json` in the root folder:
     "widget",
     "cisco"
   ],
-  "author": "B+S Solutions",
+  "author": "",
   "license": "MIT",
   "dependencies": {
     "@wxcc-desktop/sdk": "^1.2.10",

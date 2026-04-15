@@ -2,8 +2,7 @@
  * Call Selector Widget v3.0
  * A production-ready WxCC voice queue selection widget
  * 
- * @author B+S Solutions
- * @version 3.0.0
+ * @version 3.1.0
  */
 
 import { Desktop } from "@wxcc-desktop/sdk";
@@ -49,48 +48,48 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
   :host {
-    /* B+S Brand */
-    --bs-navy:         #1a4b7a;
-    --bs-navy-dark:    #143a61;
-    --bs-navy-light:   #2260a0;
-    --bs-red:          #e31937;
+    /* Theme */
+    --cs-navy:         #1a4b7a;
+    --cs-navy-dark:    #143a61;
+    --cs-navy-light:   #2260a0;
+    --cs-red:          #e31937;
 
     /* Urgency */
-    --bs-low:          #16a34a;
-    --bs-medium:       #d97706;
-    --bs-high:         #e31937;
+    --cs-low:          #16a34a;
+    --cs-medium:       #d97706;
+    --cs-high:         #e31937;
 
     /* Surfaces */
-    --bs-bg:           #f0f4f8;
-    --bs-surface:      #ffffff;
-    --bs-border:       #dde3ea;
-    --bs-border-light: #edf1f5;
+    --cs-bg:           #f0f4f8;
+    --cs-surface:      #ffffff;
+    --cs-border:       #dde3ea;
+    --cs-border-light: #edf1f5;
 
     /* Text */
-    --bs-text:         #0f172a;
-    --bs-text-2:       #475569;
-    --bs-text-3:       #94a3b8;
+    --cs-text:         #0f172a;
+    --cs-text-2:       #475569;
+    --cs-text-3:       #94a3b8;
 
     /* Misc */
-    --bs-radius:       8px;
-    --bs-transition:   150ms ease;
+    --cs-radius:       8px;
+    --cs-transition:   150ms ease;
 
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
-    color: var(--bs-text);
+    color: var(--cs-text);
   }
 
   :host([darkmode="true"]) {
-    --bs-navy:         #1e3a5f;
-    --bs-navy-dark:    #162d4a;
-    --bs-navy-light:   #2a5080;
-    --bs-bg:           #0f1923;
-    --bs-surface:      #1a2535;
-    --bs-border:       #2a3a4e;
-    --bs-border-light: #1f2f42;
-    --bs-text:         #e8edf3;
-    --bs-text-2:       #8fa5be;
-    --bs-text-3:       #4d6a85;
+    --cs-navy:         #1e3a5f;
+    --cs-navy-dark:    #162d4a;
+    --cs-navy-light:   #2a5080;
+    --cs-bg:           #0f1923;
+    --cs-surface:      #1a2535;
+    --cs-border:       #2a3a4e;
+    --cs-border-light: #1f2f42;
+    --cs-text:         #e8edf3;
+    --cs-text-2:       #8fa5be;
+    --cs-text-3:       #4d6a85;
   }
 
   * {
@@ -104,7 +103,7 @@ const styles = `
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--bs-bg);
+    background: var(--cs-bg);
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
@@ -115,7 +114,7 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: var(--bs-navy);
+    background: var(--cs-navy);
     flex-shrink: 0;
   }
 
@@ -127,24 +126,11 @@ const styles = `
     line-height: 1.2;
   }
 
-  .cs-brand-bs {
-    font-size: 10px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.6);
-    letter-spacing: 0.2px;
-    line-height: 1.4;
-  }
-
-  .cs-plus {
-    color: var(--bs-red);
-    font-weight: 900;
-  }
-
   .cs-live-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--bs-low);
+    background: var(--cs-low);
     flex-shrink: 0;
   }
 
@@ -153,7 +139,7 @@ const styles = `
   }
 
   .cs-live-dot.offline {
-    background: var(--bs-high);
+    background: var(--cs-high);
   }
 
   @keyframes pulse {
@@ -167,8 +153,8 @@ const styles = `
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: var(--bs-surface);
-    border-bottom: 1px solid var(--bs-border);
+    background: var(--cs-surface);
+    border-bottom: 1px solid var(--cs-border);
     flex-wrap: wrap;
     flex-shrink: 0;
   }
@@ -179,23 +165,23 @@ const styles = `
     gap: 5px;
     padding: 4px 10px;
     background: transparent;
-    border: 1px solid var(--bs-border);
+    border: 1px solid var(--cs-border);
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--bs-text-2);
+    color: var(--cs-text-2);
     cursor: pointer;
-    transition: all var(--bs-transition);
+    transition: all var(--cs-transition);
     user-select: none;
   }
 
-  .cs-filter-chip:hover { background: var(--bs-bg); }
+  .cs-filter-chip:hover { background: var(--cs-bg); }
 
   .cs-filter-chip.active { color: white; border-color: transparent; }
-  .cs-filter-chip.queued.active   { background: var(--bs-low); }
-  .cs-filter-chip.assigned.active { background: var(--bs-medium); }
+  .cs-filter-chip.queued.active   { background: var(--cs-low); }
+  .cs-filter-chip.assigned.active { background: var(--cs-medium); }
   .cs-filter-chip.abandoned.active,
-  .cs-filter-chip.completed.active { background: var(--bs-text-3); }
+  .cs-filter-chip.completed.active { background: var(--cs-text-3); }
 
   .cs-filter-chip .count {
     background: rgba(255,255,255,0.25);
@@ -204,7 +190,7 @@ const styles = `
     font-size: 10px;
   }
 
-  .cs-filter-chip:not(.active) .count { background: var(--bs-border); }
+  .cs-filter-chip:not(.active) .count { background: var(--cs-border); }
 
   /* =========== MAIN SCROLL AREA =========== */
   .cs-main {
@@ -228,11 +214,11 @@ const styles = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.9px;
-    color: var(--bs-text-2);
+    color: var(--cs-text-2);
   }
 
   .cs-queue-count-badge {
-    background: var(--bs-navy);
+    background: var(--cs-navy);
     color: white;
     border-radius: 10px;
     font-size: 10px;
@@ -250,27 +236,27 @@ const styles = `
 
   /* =========== CALL CARDS =========== */
   .cs-card {
-    background: var(--bs-surface);
-    border: 1px solid var(--bs-border);
-    border-left: 4px solid var(--bs-border);
-    border-radius: var(--bs-radius);
+    background: var(--cs-surface);
+    border: 1px solid var(--cs-border);
+    border-left: 4px solid var(--cs-border);
+    border-radius: var(--cs-radius);
     padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    transition: box-shadow var(--bs-transition);
+    transition: box-shadow var(--cs-transition);
   }
 
   .cs-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
 
-  .cs-card.urgency-low    { border-left-color: var(--bs-low); }
-  .cs-card.urgency-medium { border-left-color: var(--bs-medium); }
-  .cs-card.urgency-high   { border-left-color: var(--bs-high); }
+  .cs-card.urgency-low    { border-left-color: var(--cs-low); }
+  .cs-card.urgency-medium { border-left-color: var(--cs-medium); }
+  .cs-card.urgency-high   { border-left-color: var(--cs-high); }
 
   .cs-card-phone {
     font-size: 14px;
     font-weight: 700;
-    color: var(--bs-text);
+    color: var(--cs-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -278,7 +264,7 @@ const styles = `
 
   .cs-card-name {
     font-size: 12px;
-    color: var(--bs-text-2);
+    color: var(--cs-text-2);
     margin-top: -4px;
     white-space: nowrap;
     overflow: hidden;
@@ -299,9 +285,9 @@ const styles = `
     font-variant-numeric: tabular-nums;
   }
 
-  .cs-card-wait.urgency-low    { color: var(--bs-low); }
-  .cs-card-wait.urgency-medium { color: var(--bs-medium); }
-  .cs-card-wait.urgency-high   { color: var(--bs-high); }
+  .cs-card-wait.urgency-low    { color: var(--cs-low); }
+  .cs-card-wait.urgency-medium { color: var(--cs-medium); }
+  .cs-card-wait.urgency-high   { color: var(--cs-high); }
 
   /* =========== CUSTOM FIELD BADGES =========== */
   .cs-card-fields {
@@ -315,9 +301,9 @@ const styles = `
     font-weight: 600;
     padding: 2px 6px;
     border-radius: 4px;
-    background: var(--bs-bg);
-    color: var(--bs-text-2);
-    border: 1px solid var(--bs-border);
+    background: var(--cs-bg);
+    color: var(--cs-text-2);
+    border: 1px solid var(--cs-border);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -334,28 +320,28 @@ const styles = `
     letter-spacing: 0.4px;
   }
 
-  .cs-status-badge.queued    { background: rgba(22,163,74,0.12); color: var(--bs-low); }
-  .cs-status-badge.assigned  { background: rgba(217,119,6,0.12); color: var(--bs-medium); }
+  .cs-status-badge.queued    { background: rgba(22,163,74,0.12); color: var(--cs-low); }
+  .cs-status-badge.assigned  { background: rgba(217,119,6,0.12); color: var(--cs-medium); }
   .cs-status-badge.abandoned,
-  .cs-status-badge.completed { background: rgba(148,163,184,0.15); color: var(--bs-text-3); }
+  .cs-status-badge.completed { background: rgba(148,163,184,0.15); color: var(--cs-text-3); }
 
   /* =========== CLAIM BUTTON =========== */
   .cs-claim-btn {
     width: 100%;
     padding: 8px;
-    background: var(--bs-navy);
+    background: var(--cs-navy);
     color: white;
     border: none;
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background var(--bs-transition);
+    transition: background var(--cs-transition);
     margin-top: auto;
     letter-spacing: 0.2px;
   }
 
-  .cs-claim-btn:hover:not(:disabled) { background: var(--bs-navy-dark); }
+  .cs-claim-btn:hover:not(:disabled) { background: var(--cs-navy-dark); }
 
   .cs-claim-btn:disabled {
     opacity: 0.55;
@@ -370,14 +356,14 @@ const styles = `
     justify-content: center;
     padding: 48px 20px;
     text-align: center;
-    color: var(--bs-text-3);
+    color: var(--cs-text-3);
     gap: 8px;
   }
 
   .cs-state-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--bs-text-2);
+    color: var(--cs-text-2);
   }
 
   .cs-state-text {
@@ -389,8 +375,8 @@ const styles = `
   .cs-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid var(--bs-border);
-    border-top-color: var(--bs-navy);
+    border: 3px solid var(--cs-border);
+    border-top-color: var(--cs-navy);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
@@ -400,17 +386,17 @@ const styles = `
   .cs-retry-btn {
     margin-top: 8px;
     padding: 8px 18px;
-    background: var(--bs-navy);
+    background: var(--cs-navy);
     color: white;
     border: none;
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background var(--bs-transition);
+    transition: background var(--cs-transition);
   }
 
-  .cs-retry-btn:hover { background: var(--bs-navy-dark); }
+  .cs-retry-btn:hover { background: var(--cs-navy-dark); }
 
   /* =========== FOOTER =========== */
   .cs-footer {
@@ -418,10 +404,10 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     padding: 7px 14px;
-    background: var(--bs-surface);
-    border-top: 1px solid var(--bs-border);
+    background: var(--cs-surface);
+    border-top: 1px solid var(--cs-border);
     font-size: 10px;
-    color: var(--bs-text-3);
+    color: var(--cs-text-3);
     flex-shrink: 0;
   }
 `;
@@ -1136,10 +1122,7 @@ class CallSelectorWidget extends HTMLElement {
       <style>${styles}</style>
       <div class="cs-root">
         <header class="cs-header">
-          <div>
-            <div class="cs-brand-name">Call Selector</div>
-            <div class="cs-brand-bs">bucher<span class="cs-plus">+</span>suter</div>
-          </div>
+          <div class="cs-brand-name">Call Selector</div>
           <div class="cs-live-dot ${this._socketConnected ? 'live' : 'offline'}" id="liveDot"></div>
         </header>
 

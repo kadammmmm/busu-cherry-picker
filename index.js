@@ -1,9 +1,7 @@
 /**
- * Cherry Picker Backend Server v2.0
- * Production-ready Express + Socket.IO server for WxCC Cherry Picker widget
- * 
- * @author B+S Solutions
- * @version 2.0.0
+ * Call Selector Backend Server
+ * Production-ready Express + Socket.IO server for WxCC Call Selector widget
+ * @version 3.1.0
  */
 
 import express from "express";

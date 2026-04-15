@@ -1,7 +1,7 @@
 {
   "name": "busu-call-selector",
   "version": "3.0.0",
-  "description": "WxCC Voice Queue Call Selector Widget - Select and claim calls from queue - A B+S Solutions Product",
+  "description": "WxCC Voice Queue Call Selector Widget - Select and claim calls from queue",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -24,7 +24,7 @@
     "cisco",
     "agent-desktop"
   ],
-  "author": "B+S Solutions",
+  "author": "",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
