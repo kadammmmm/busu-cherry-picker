@@ -1,15 +1,15 @@
 /**
- * Cherry Picker Backend Server v2.0
- * Production-ready Express + Socket.IO server for WxCC Cherry Picker widget
- * 
- * @author B+S Solutions
- * @version 2.0.0
+ * Call Selector Backend Server
+ * Production-ready Express + Socket.IO server for WxCC Call Selector widget
+ * @author Matt Kadas
+ * @version 3.1.0
  */
 
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
+import rateLimit from "express-rate-limit";
 import http from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
@@ -30,7 +30,7 @@ const CONFIG = {
   port: process.env.PORT || 5000,
   hostUri: process.env.HOST_URI || `http://localhost:${process.env.PORT || 5000}`,
   nodeEnv: process.env.NODE_ENV || 'development',
-  corsOrigins: process.env.CORS_ORIGINS?.split(',') || [
+  corsOrigins: process.env.CORS_ORIGINS?.split(',').filter(Boolean) || [
     'https://desktop.wxcc-us1.cisco.com',
     'https://desktop.wxcc-eu1.cisco.com',
     'https://desktop.wxcc-eu2.cisco.com',
@@ -118,6 +118,10 @@ class TTLCache {
     }
   }
 
+  clear() {
+    this.cache.clear();
+  }
+
   stats() {
     return {
       size: this.cache.size,
@@ -130,6 +134,59 @@ class TTLCache {
     this.cache.clear();
   }
 }
+
+// =============================================================================
+// AUTH MIDDLEWARE
+// =============================================================================
+
+/**
+ * Protects the POST / ingestion endpoint.
+ * Set API_KEY in your environment. The WxCC flow HTTP Request node must send
+ * this value as the header: x-api-key
+ * If API_KEY is not set, auth is skipped (safe for local dev only).
+ */
+const requireApiKey = (req, res, next) => {
+  if (!process.env.API_KEY) return next();
+  const key = req.headers['x-api-key'];
+  if (key && key === process.env.API_KEY) return next();
+  logger.warn('Rejected request: invalid or missing x-api-key');
+  res.status(401).json({ error: 'Unauthorized' });
+};
+
+/**
+ * Protects /admin/* endpoints.
+ * Set ADMIN_KEY in your environment and send it as the header: x-admin-key
+ * If ADMIN_KEY is not set, admin endpoints are open (local dev only).
+ */
+const requireAdminKey = (req, res, next) => {
+  if (!process.env.ADMIN_KEY) return next();
+  const key = req.headers['x-admin-key'];
+  if (key && key === process.env.ADMIN_KEY) return next();
+  logger.warn('Rejected admin request: invalid or missing x-admin-key');
+  res.status(401).json({ error: 'Unauthorized' });
+};
+
+// =============================================================================
+// RATE LIMITERS
+// =============================================================================
+
+// Ingestion endpoint: max 60 requests/min (covers realistic call arrival rates)
+const ingestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' }
+});
+
+// Admin endpoints: max 30 requests/min
+const adminLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' }
+});
 
 // =============================================================================
 // EXPRESS APP SETUP
@@ -307,7 +364,7 @@ app.get('/ready', (req, res) => {
  * Receive new call data from WxCC Flow HTTP Request
  * This endpoint caches caller ID info and broadcasts to connected agents
  */
-app.post('/', (req, res) => {
+app.post('/', ingestLimiter, requireApiKey, (req, res) => {
   try {
     const callData = req.body;
     
@@ -318,19 +375,23 @@ app.post('/', (req, res) => {
       return res.status(400).json({ error: 'InteractionId is required' });
     }
 
-    // Validate required fields
-    const requiredFields = ['ANI', 'DNIS', 'OrgId'];
-    const missingFields = requiredFields.filter(f => !callData[f]);
-    
-    if (missingFields.length > 0) {
-      logger.warn(`Missing fields: ${missingFields.join(', ')}`);
-    }
+    // Validate required fields (not required for event notifications like abandoned)
+    if (callData.eventType !== 'abandoned') {
+      const requiredFields = ['ANI', 'DNIS', 'OrgId'];
+      const missingFields = requiredFields.filter(f => !callData[f]);
+      if (missingFields.length > 0) {
+        logger.warn(`Missing fields: ${missingFields.join(', ')}`);
+      }
 
-    // Cache the caller ID data
-    callerIdCache.set(callData.InteractionId, {
-      ...callData,
-      receivedAt: new Date().toISOString()
-    });
+      // Cache the caller ID data — skip for event notifications so we don't
+      // overwrite the original ANI/custom-field data with a skeleton payload
+      callerIdCache.set(callData.InteractionId, {
+        ...callData,
+        receivedAt: new Date().toISOString()
+      });
+    } else {
+      logger.info(`Abandon event received for ${callData.InteractionId}`);
+    }
 
     // Broadcast to agents in the same org
     if (callData.OrgId) {
@@ -385,16 +446,14 @@ app.post('/callerIds', cors(corsOptions), (req, res) => {
 /**
  * Get cache statistics (admin endpoint)
  */
-app.get('/admin/cache', (req, res) => {
-  // In production, add authentication here
+app.get('/admin/cache', adminLimiter, requireAdminKey, (req, res) => {
   res.json(callerIdCache.stats());
 });
 
 /**
  * Get connected agents (admin endpoint)
  */
-app.get('/admin/connections', (req, res) => {
-  // In production, add authentication here
+app.get('/admin/connections', adminLimiter, requireAdminKey, (req, res) => {
   const connections = Array.from(connectedAgents.entries()).map(([id, info]) => ({
     socketId: id,
     ...info
@@ -409,9 +468,8 @@ app.get('/admin/connections', (req, res) => {
 /**
  * Clear cache (admin endpoint)
  */
-app.post('/admin/cache/clear', (req, res) => {
-  // In production, add authentication here
-  callerIdCache.cache.clear();
+app.post('/admin/cache/clear', adminLimiter, requireAdminKey, (req, res) => {
+  callerIdCache.clear();
   logger.info('Cache cleared by admin request');
   res.json({ success: true, message: 'Cache cleared' });
 });
@@ -474,6 +532,12 @@ server.listen(CONFIG.port, () => {
   logger.info(`Host URI: ${CONFIG.hostUri}`);
   logger.info(`CORS Origins: ${CONFIG.corsOrigins.join(', ')}`);
   logger.info(`Cache TTL: ${CONFIG.cacheTtl}s`);
+  if (!process.env.API_KEY) {
+    logger.warn('API_KEY is not set — ingestion endpoint is unauthenticated. Set API_KEY in production.');
+  }
+  if (!process.env.ADMIN_KEY) {
+    logger.warn('ADMIN_KEY is not set — admin endpoints are unprotected. Set ADMIN_KEY in production.');
+  }
   logger.info('='.repeat(50));
 });
 

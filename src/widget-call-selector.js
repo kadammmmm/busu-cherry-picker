@@ -2,8 +2,8 @@
  * Call Selector Widget v3.0
  * A production-ready WxCC voice queue selection widget
  * 
- * @author B+S Solutions
- * @version 3.0.0
+ * @author Matt Kadas
+ * @version 3.1.0
  */
 
 import { Desktop } from "@wxcc-desktop/sdk";
@@ -26,10 +26,10 @@ const WXCC_REGIONS = {
 const DEFAULT_CONFIG = {
   refreshInterval: 5,
   maxTaskAge: 600,
-  showCompleted: true,
-  showAbandoned: true,
   region: 'us1',
-  // Configurable display fields - customers can customize this
+  // Only queued calls shown by default. Admins can expand via the showstatuses widget attribute
+  // e.g. showstatuses="queued,assigned,abandoned,completed"
+  showStatuses: ['queued'],
   displayFields: ['priority', 'customerName', 'accountNumber', 'callReason']
 };
 
@@ -49,64 +49,48 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
   :host {
-    --cs-primary: #00bceb;
-    --cs-primary-hover: #00a0c7;
-    --cs-primary-active: #008fb3;
-    
-    --cs-success: #00c853;
-    --cs-success-bg: rgba(0, 200, 83, 0.12);
-    --cs-warning: #ffab00;
-    --cs-warning-bg: rgba(255, 171, 0, 0.12);
-    --cs-danger: #ff5252;
-    --cs-danger-bg: rgba(255, 82, 82, 0.12);
-    --cs-muted: #9e9e9e;
-    --cs-muted-bg: rgba(158, 158, 158, 0.12);
-    
-    --cs-bg-primary: #ffffff;
-    --cs-bg-secondary: #f8f9fa;
-    --cs-bg-card: #ffffff;
-    --cs-bg-hover: #f5f5f5;
-    --cs-bg-queue-header: #f0f4f8;
-    
-    --cs-border: #e0e0e0;
-    --cs-border-light: #f0f0f0;
-    
-    --cs-text-primary: #212121;
-    --cs-text-secondary: #616161;
-    --cs-text-muted: #9e9e9e;
-    
-    --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-    --cs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-    --cs-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-    
-    --cs-radius-sm: 6px;
-    --cs-radius-md: 10px;
-    --cs-radius-lg: 14px;
-    
-    --cs-transition: 200ms ease;
-    
+    /* Theme */
+    --cs-navy:         #1a4b7a;
+    --cs-navy-dark:    #143a61;
+    --cs-navy-light:   #2260a0;
+    --cs-red:          #e31937;
+
+    /* Urgency */
+    --cs-low:          #16a34a;
+    --cs-medium:       #d97706;
+    --cs-high:         #e31937;
+
+    /* Surfaces */
+    --cs-bg:           #f0f4f8;
+    --cs-surface:      #ffffff;
+    --cs-border:       #dde3ea;
+    --cs-border-light: #edf1f5;
+
+    /* Text */
+    --cs-text:         #0f172a;
+    --cs-text-2:       #475569;
+    --cs-text-3:       #94a3b8;
+
+    /* Misc */
+    --cs-radius:       8px;
+    --cs-transition:   150ms ease;
+
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
-    color: var(--cs-text-primary);
+    color: var(--cs-text);
   }
 
   :host([darkmode="true"]) {
-    --cs-bg-primary: #1a1a1a;
-    --cs-bg-secondary: #242424;
-    --cs-bg-card: #2d2d2d;
-    --cs-bg-hover: #363636;
-    --cs-bg-queue-header: #333333;
-    
-    --cs-border: #404040;
-    --cs-border-light: #333333;
-    
-    --cs-text-primary: #ffffff;
-    --cs-text-secondary: #b0b0b0;
-    --cs-text-muted: #757575;
-    
-    --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --cs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --cs-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --cs-navy:         #1e3a5f;
+    --cs-navy-dark:    #162d4a;
+    --cs-navy-light:   #2a5080;
+    --cs-bg:           #0f1923;
+    --cs-surface:      #1a2535;
+    --cs-border:       #2a3a4e;
+    --cs-border-light: #1f2f42;
+    --cs-text:         #e8edf3;
+    --cs-text-2:       #8fa5be;
+    --cs-text-3:       #4d6a85;
   }
 
   * {
@@ -115,12 +99,14 @@ const styles = `
     padding: 0;
   }
 
-  .call-selector {
+  /* =========== ROOT =========== */
+  .cs-root {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--cs-bg-primary);
+    background: var(--cs-bg);
     overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   /* =========== HEADER =========== */
@@ -128,100 +114,48 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--cs-bg-primary);
-    border-bottom: 1px solid var(--cs-border-light);
+    padding: 12px 16px;
+    background: var(--cs-navy);
     flex-shrink: 0;
   }
 
-  .cs-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .cs-branding {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .cs-title {
-    font-size: 18px;
+  .cs-brand-name {
+    font-size: 15px;
     font-weight: 700;
-    color: var(--cs-text-primary);
+    color: #ffffff;
     letter-spacing: -0.3px;
+    line-height: 1.2;
   }
 
-  .cs-powered-by {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: var(--cs-text-muted);
-  }
-
-  .cs-bs-text {
-    font-weight: 600;
-    color: #1a4b7a;
-    letter-spacing: -0.3px;
-  }
-
-  :host([darkmode="true"]) .cs-bs-text {
-    color: #5a9fd4;
-  }
-
-  .cs-plus {
-    color: #e31937;
-    font-weight: 700;
-  }
-
-  .cs-connection-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .cs-connection-status.connected {
-    background: var(--cs-success-bg);
-    color: var(--cs-success);
-  }
-
-  .cs-connection-status.disconnected {
-    background: var(--cs-danger-bg);
-    color: var(--cs-danger);
-  }
-
-  .cs-connection-dot {
-    width: 6px;
-    height: 6px;
+  .cs-live-dot {
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: currentColor;
+    background: var(--cs-low);
+    flex-shrink: 0;
   }
 
-  .cs-connection-status.connected .cs-connection-dot {
-    animation: pulse 2s infinite;
+  .cs-live-dot.live {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .cs-live-dot.offline {
+    background: var(--cs-high);
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
   }
 
-  /* =========== FILTERS =========== */
+  /* =========== FILTERS (admin-enabled only) =========== */
   .cs-filters {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    background: var(--cs-bg-primary);
-    border-bottom: 1px solid var(--cs-border-light);
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--cs-surface);
+    border-bottom: 1px solid var(--cs-border);
     flex-wrap: wrap;
     flex-shrink: 0;
   }
@@ -229,467 +163,253 @@ const styles = `
   .cs-filter-chip {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: var(--cs-bg-secondary);
+    gap: 5px;
+    padding: 4px 10px;
+    background: transparent;
     border: 1px solid var(--cs-border);
     border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--cs-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cs-text-2);
     cursor: pointer;
     transition: all var(--cs-transition);
     user-select: none;
   }
 
-  .cs-filter-chip:hover {
-    background: var(--cs-bg-hover);
-  }
+  .cs-filter-chip:hover { background: var(--cs-bg); }
 
-  .cs-filter-chip.active {
-    color: white;
-    border-color: transparent;
-  }
-
-  .cs-filter-chip.queued.active { background: var(--cs-success); border-color: var(--cs-success); }
-  .cs-filter-chip.assigned.active { background: var(--cs-warning); border-color: var(--cs-warning); }
-  .cs-filter-chip.abandoned.active { background: var(--cs-danger); border-color: var(--cs-danger); }
-  .cs-filter-chip.completed.active { background: var(--cs-muted); border-color: var(--cs-muted); }
+  .cs-filter-chip.active { color: white; border-color: transparent; }
+  .cs-filter-chip.queued.active   { background: var(--cs-low); }
+  .cs-filter-chip.assigned.active { background: var(--cs-medium); }
+  .cs-filter-chip.abandoned.active,
+  .cs-filter-chip.completed.active { background: var(--cs-text-3); }
 
   .cs-filter-chip .count {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-size: 11px;
+    background: rgba(255,255,255,0.25);
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 10px;
   }
 
-  .cs-filter-chip:not(.active) .count {
-    background: var(--cs-border);
-  }
+  .cs-filter-chip:not(.active) .count { background: var(--cs-border); }
 
-  /* =========== QUEUE GROUPS =========== */
-  .cs-queue-list {
+  /* =========== MAIN SCROLL AREA =========== */
+  .cs-main {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
-    background: var(--cs-bg-secondary);
+    padding: 12px;
   }
 
-  .cs-queue-group {
-    margin-bottom: 16px;
-    background: var(--cs-bg-card);
-    border-radius: var(--cs-radius-md);
-    box-shadow: var(--cs-shadow-sm);
-    overflow: hidden;
-  }
+  /* =========== QUEUE SECTIONS =========== */
+  .cs-queue-section { margin-bottom: 18px; }
 
-  .cs-queue-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--cs-bg-queue-header);
-    border-bottom: 1px solid var(--cs-border-light);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .cs-queue-header:hover {
-    background: var(--cs-bg-hover);
-  }
-
-  .cs-queue-name {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    color: var(--cs-text-primary);
-  }
-
-  .cs-queue-name svg {
-    width: 18px;
-    height: 18px;
-    fill: var(--cs-primary);
-  }
-
-  .cs-queue-count {
+  .cs-queue-label {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 0 2px 8px;
   }
 
-  .cs-queue-badge {
-    padding: 4px 10px;
-    border-radius: 12px;
+  .cs-queue-name-text {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    color: var(--cs-text-2);
+  }
+
+  .cs-queue-count-badge {
+    background: var(--cs-navy);
+    color: white;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    line-height: 1.6;
+  }
+
+  /* =========== CARD GRID =========== */
+  .cs-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 10px;
+  }
+
+  /* =========== CALL CARDS =========== */
+  .cs-card {
+    background: var(--cs-surface);
+    border: 1px solid var(--cs-border);
+    border-left: 4px solid var(--cs-border);
+    border-radius: var(--cs-radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow var(--cs-transition);
+  }
+
+  .cs-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+
+  .cs-card.urgency-low    { border-left-color: var(--cs-low); }
+  .cs-card.urgency-medium { border-left-color: var(--cs-medium); }
+  .cs-card.urgency-high   { border-left-color: var(--cs-high); }
+
+  .cs-card-phone {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cs-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cs-card-name {
     font-size: 12px;
-    font-weight: 600;
+    color: var(--cs-text-2);
+    margin-top: -4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .cs-queue-badge.queued {
-    background: var(--cs-success-bg);
-    color: var(--cs-success);
-  }
-
-  .cs-queue-badge.total {
-    background: var(--cs-bg-secondary);
-    color: var(--cs-text-secondary);
-  }
-
-  .cs-queue-chevron {
-    width: 20px;
-    height: 20px;
-    fill: var(--cs-text-muted);
-    transition: transform var(--cs-transition);
-  }
-
-  .cs-queue-group.collapsed .cs-queue-chevron {
-    transform: rotate(-90deg);
-  }
-
-  .cs-queue-tasks {
-    padding: 8px;
-  }
-
-  .cs-queue-group.collapsed .cs-queue-tasks {
-    display: none;
-  }
-
-  /* =========== TASK CARDS =========== */
-  .cs-task-card {
-    background: var(--cs-bg-card);
-    border: 1px solid var(--cs-border-light);
-    border-radius: var(--cs-radius-sm);
-    margin-bottom: 8px;
-    transition: all var(--cs-transition);
-  }
-
-  .cs-task-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .cs-task-card:hover {
-    box-shadow: var(--cs-shadow-md);
-    border-color: var(--cs-border);
-  }
-
-  .cs-task-card.faded {
-    opacity: 0.6;
-  }
-
-  .cs-task-header {
+  .cs-card-meta {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--cs-border-light);
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .cs-task-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  .cs-card-wait {
     font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .cs-task-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-  }
-
-  .cs-task-status.queued { color: var(--cs-success); }
-  .cs-task-status.queued .cs-task-status-dot { background: var(--cs-success); }
-  
-  .cs-task-status.assigned { color: var(--cs-warning); }
-  .cs-task-status.assigned .cs-task-status-dot { background: var(--cs-warning); }
-  
-  .cs-task-status.abandoned { color: var(--cs-danger); }
-  .cs-task-status.abandoned .cs-task-status-dot { background: var(--cs-danger); }
-  
-  .cs-task-status.completed { color: var(--cs-muted); }
-  .cs-task-status.completed .cs-task-status-dot { background: var(--cs-muted); }
-
-  .cs-task-time {
-    font-size: 12px;
-    color: var(--cs-text-muted);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
-  .cs-task-body {
-    padding: 14px;
-  }
+  .cs-card-wait.urgency-low    { color: var(--cs-low); }
+  .cs-card-wait.urgency-medium { color: var(--cs-medium); }
+  .cs-card-wait.urgency-high   { color: var(--cs-high); }
 
-  .cs-task-main {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .cs-task-caller {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    flex: 1;
-  }
-
-  .cs-task-avatar {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--cs-primary) 0%, #0095d9 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .cs-task-avatar svg {
-    width: 20px;
-    height: 20px;
-    fill: white;
-  }
-
-  .cs-task-avatar.priority-high {
-    background: linear-gradient(135deg, var(--cs-danger) 0%, #ff1744 100%);
-  }
-
-  .cs-task-avatar.priority-medium {
-    background: linear-gradient(135deg, var(--cs-warning) 0%, #ff9100 100%);
-  }
-
-  .cs-task-caller-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .cs-task-phone {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--cs-text-primary);
-    margin-bottom: 2px;
-  }
-
-  .cs-task-name {
-    font-size: 13px;
-    color: var(--cs-text-secondary);
-    margin-bottom: 4px;
-  }
-
-  /* =========== CUSTOM FIELDS =========== */
-  .cs-task-fields {
+  /* =========== CUSTOM FIELD BADGES =========== */
+  .cs-card-fields {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--cs-border-light);
-  }
-
-  .cs-task-field {
-    display: flex;
-    align-items: center;
     gap: 4px;
-    padding: 4px 8px;
-    background: var(--cs-bg-secondary);
-    border-radius: var(--cs-radius-sm);
-    font-size: 11px;
   }
 
-  .cs-task-field-label {
-    color: var(--cs-text-muted);
-    font-weight: 500;
-  }
-
-  .cs-task-field-value {
-    color: var(--cs-text-primary);
+  .cs-field-badge {
+    font-size: 10px;
     font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--cs-bg);
+    color: var(--cs-text-2);
+    border: 1px solid var(--cs-border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
   }
 
-  .cs-task-field.priority-high {
-    background: var(--cs-danger-bg);
+  /* =========== STATUS BADGE (admin multi-status mode) =========== */
+  .cs-status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
   }
 
-  .cs-task-field.priority-high .cs-task-field-value {
-    color: var(--cs-danger);
-  }
-
-  .cs-task-field.priority-medium {
-    background: var(--cs-warning-bg);
-  }
-
-  .cs-task-field.priority-medium .cs-task-field-value {
-    color: var(--cs-warning);
-  }
+  .cs-status-badge.queued    { background: rgba(22,163,74,0.12); color: var(--cs-low); }
+  .cs-status-badge.assigned  { background: rgba(217,119,6,0.12); color: var(--cs-medium); }
+  .cs-status-badge.abandoned,
+  .cs-status-badge.completed { background: rgba(148,163,184,0.15); color: var(--cs-text-3); }
 
   /* =========== CLAIM BUTTON =========== */
   .cs-claim-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: var(--cs-success);
+    width: 100%;
+    padding: 8px;
+    background: var(--cs-navy);
     color: white;
     border: none;
-    border-radius: var(--cs-radius-sm);
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--cs-transition);
-    flex-shrink: 0;
+    transition: background var(--cs-transition);
+    margin-top: auto;
+    letter-spacing: 0.2px;
   }
 
-  .cs-claim-btn:hover {
-    background: #00b048;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
-  }
-
-  .cs-claim-btn:active {
-    transform: translateY(0);
-  }
+  .cs-claim-btn:hover:not(:disabled) { background: var(--cs-navy-dark); }
 
   .cs-claim-btn:disabled {
-    background: var(--cs-border);
-    color: var(--cs-text-muted);
+    opacity: 0.55;
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 
-  .cs-claim-btn svg {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
-  }
-
-  .cs-claim-btn.loading {
-    position: relative;
-    color: transparent;
-  }
-
-  .cs-claim-btn.loading::after {
-    content: '';
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border: 2px solid white;
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* =========== EMPTY & LOADING STATES =========== */
-  .cs-empty-state,
-  .cs-loading,
-  .cs-error-state {
+  /* =========== EMPTY / LOADING / ERROR =========== */
+  .cs-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 48px 20px;
     text-align: center;
+    color: var(--cs-text-3);
+    gap: 8px;
   }
 
-  .cs-empty-icon,
-  .cs-error-icon {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
-
-  .cs-empty-icon svg,
-  .cs-error-icon svg {
-    width: 100%;
-    height: 100%;
-    fill: var(--cs-text-muted);
-  }
-
-  .cs-empty-title,
-  .cs-error-title {
-    font-size: 16px;
+  .cs-state-title {
+    font-size: 14px;
     font-weight: 600;
-    color: var(--cs-text-primary);
-    margin-bottom: 8px;
+    color: var(--cs-text-2);
   }
 
-  .cs-empty-text,
-  .cs-error-text {
-    font-size: 13px;
-    color: var(--cs-text-muted);
-    max-width: 280px;
+  .cs-state-text {
+    font-size: 12px;
+    max-width: 240px;
     line-height: 1.5;
   }
 
-  .cs-loading-spinner {
-    width: 40px;
-    height: 40px;
+  .cs-spinner {
+    width: 32px;
+    height: 32px;
     border: 3px solid var(--cs-border);
-    border-top-color: var(--cs-primary);
+    border-top-color: var(--cs-navy);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 16px;
+    animation: spin 0.7s linear infinite;
   }
 
-  .cs-loading-text {
-    font-size: 13px;
-    color: var(--cs-text-muted);
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .cs-retry-btn {
-    margin-top: 16px;
-    padding: 10px 20px;
-    background: var(--cs-primary);
+    margin-top: 8px;
+    padding: 8px 18px;
+    background: var(--cs-navy);
     color: white;
     border: none;
-    border-radius: var(--cs-radius-sm);
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     transition: background var(--cs-transition);
   }
 
-  .cs-retry-btn:hover {
-    background: var(--cs-primary-hover);
-  }
+  .cs-retry-btn:hover { background: var(--cs-navy-dark); }
 
   /* =========== FOOTER =========== */
   .cs-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 20px;
-    background: var(--cs-bg-primary);
-    border-top: 1px solid var(--cs-border-light);
-    font-size: 11px;
-    color: var(--cs-text-muted);
+    padding: 7px 14px;
+    background: var(--cs-surface);
+    border-top: 1px solid var(--cs-border);
+    font-size: 10px;
+    color: var(--cs-text-3);
     flex-shrink: 0;
-  }
-
-  .cs-footer-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .cs-refresh-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .cs-refresh-indicator svg {
-    width: 12px;
-    height: 12px;
-    fill: var(--cs-text-muted);
   }
 `;
 
@@ -740,6 +460,23 @@ const formatDuration = (ms) => {
 const capitalizeFirst = (str) => {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
+const getUrgencyClass = (createdTime) => {
+  const age = (Date.now() - createdTime) / 1000;
+  if (age < 120) return 'urgency-low';
+  if (age < 300) return 'urgency-medium';
+  return 'urgency-high';
+};
+
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 };
 
 const parseCallerName = (headers) => {
@@ -801,13 +538,18 @@ class TaskStore {
   }
 
   setTasks(tasks) {
-    tasks.forEach(task => {
-      const existing = this.tasks.get(task.id);
-      if (!existing || existing.lastUpdatedTime !== task.lastUpdatedTime) {
-        this.tasks.set(task.id, task);
-      }
-    });
+    // Replace the full task set so tasks removed from the API disappear from the UI
+    this.tasks.clear();
+    tasks.forEach(task => this.tasks.set(task.id, task));
     this.notify();
+  }
+
+  updateTask(id, partial) {
+    const existing = this.tasks.get(id);
+    if (existing) {
+      this.tasks.set(id, { ...existing, ...partial });
+      this.notify();
+    }
   }
 
   setCallerId(id, data) {
@@ -826,7 +568,7 @@ class TaskStore {
   }
 
   // Group tasks by queue
-  getTasksGroupedByQueue() {
+  getTasksGroupedByQueue(showStatuses) {
     const { tasks, filters, callerIds, customFields } = this.getState();
     const groups = new Map();
 
@@ -837,7 +579,14 @@ class TaskStore {
           return false;
         }
         const status = this.normalizeStatus(task.status);
-        return filters[status];
+        // If admin has enabled multiple statuses, also respect the agent's filter toggles
+        if (showStatuses && showStatuses.length > 0) {
+          if (!showStatuses.includes(status)) return false;
+        }
+        if (showStatuses && showStatuses.length > 1) {
+          return filters[status] !== false;
+        }
+        return true;
       })
       .forEach(task => {
         const queueName = task.queue?.name || 'Unknown Queue';
@@ -877,7 +626,7 @@ class TaskStore {
     return Array.from(groups.values()).sort((a, b) => b.queuedCount - a.queuedCount);
   }
 
-  getFilteredTasks() {
+  getFilteredTasks(showStatuses) {
     const { tasks, filters, callerIds, customFields } = this.getState();
     return tasks
       .filter(task => {
@@ -885,7 +634,13 @@ class TaskStore {
           return false;
         }
         const status = this.normalizeStatus(task.status);
-        return filters[status];
+        if (showStatuses && showStatuses.length > 0) {
+          if (!showStatuses.includes(status)) return false;
+        }
+        if (showStatuses && showStatuses.length > 1) {
+          return filters[status] !== false;
+        }
+        return true;
       })
       .map(task => ({
         ...task,
@@ -927,13 +682,14 @@ class TaskStore {
 // =============================================================================
 
 class WxCCApiService {
-  constructor(config) {
+  constructor(config, getToken) {
     this.config = config;
     this.region = WXCC_REGIONS[config.region] || WXCC_REGIONS.us1;
+    this._getToken = getToken;
   }
 
   async getToken() {
-    return window.myAgentService?.webex?.token?.access_token;
+    return this._getToken?.();
   }
 
   async getTasks(fromEpoch) {
@@ -1020,7 +776,7 @@ class CallerIdService {
 
 class CallSelectorWidget extends HTMLElement {
   static get observedAttributes() {
-    return ['darkmode', 'region', 'refreshinterval', 'displayfields'];
+    return ['darkmode', 'region', 'refreshinterval', 'displayfields', 'showstatuses'];
   }
 
   constructor() {
@@ -1029,6 +785,8 @@ class CallSelectorWidget extends HTMLElement {
     
     this.store = new TaskStore();
     this.config = { ...DEFAULT_CONFIG };
+    this.agentService = null;
+    this.agentDetails = null;
     this.apiService = null;
     this.callerIdService = null;
     this.socket = null;
@@ -1038,8 +796,10 @@ class CallSelectorWidget extends HTMLElement {
     this.hasError = false;
     this.errorMessage = '';
     this.claimingTasks = new Set();
+    this._fetchInFlight = false;
     this._socketConnected = false;
     this.collapsedQueues = new Set(); // Track collapsed queue groups
+    this.uiInterval = null;
     
     // Parse display fields from attribute or use defaults
     this.displayFields = DEFAULT_CONFIG.displayFields;
@@ -1076,21 +836,24 @@ class CallSelectorWidget extends HTMLElement {
           this.displayFields = newValue.split(',').map(f => f.trim());
         }
         break;
+      case 'showstatuses':
+        this.config.showStatuses = newValue.split(',').map(s => s.trim()).filter(Boolean);
+        this.updateUI();
+        break;
     }
   }
 
   async initialize() {
     try {
       Desktop.config.init();
-      
-      window.myAgentService = Desktop.agentContact.SERVICE;
-      
-      const agentDetails = await Desktop.agentContact.SERVICE.webex.fetchPersonData("me");
-      window.agentDetails = agentDetails;
-      
+
+      this.agentService = Desktop.agentContact.SERVICE;
+      this.agentDetails = await this.agentService.webex.fetchPersonData("me");
+
       this.initializeServices();
       this.setupDesktopEvents();
       this.initializeSocket();
+      this.loadFiltersFromCookies();
       this.startPolling();
       
       this.isLoading = false;
@@ -1107,7 +870,7 @@ class CallSelectorWidget extends HTMLElement {
       || process.env.HOST_URI 
       || 'https://busu-cherry-picker.onrender.com';
     
-    this.apiService = new WxCCApiService(this.config);
+    this.apiService = new WxCCApiService(this.config, () => this.agentService?.webex?.token?.access_token);
     this.callerIdService = new CallerIdService(hostUri);
   }
 
@@ -1165,10 +928,20 @@ class CallSelectorWidget extends HTMLElement {
 
     this.socket.on('message', (data) => {
       logger.debug('Socket message:', data);
-      if (data.InteractionId) {
+      if (!data.InteractionId) return;
+      if (data.eventType === 'abandoned') {
+        this.handleAbandonedTask(data);
+      } else {
         this.handleNewTask(data);
       }
     });
+  }
+
+  handleAbandonedTask(data) {
+    // Optimistically mark the task abandoned so the UI updates before the next poll
+    this.store.updateTask(data.InteractionId, { status: 'abandoned' });
+    // Confirm with the WxCC API
+    this.fetchTasks();
   }
 
   handleNewTask(data) {
@@ -1200,7 +973,7 @@ class CallSelectorWidget extends HTMLElement {
       this.fetchTasks();
     }, this.config.refreshInterval * 1000);
 
-    setInterval(() => {
+    this.uiInterval = setInterval(() => {
       this.updateRefreshIndicator();
       this.updateWaitTimes();
     }, 1000);
@@ -1214,28 +987,30 @@ class CallSelectorWidget extends HTMLElement {
   }
 
   async fetchTasks() {
+    if (this._fetchInFlight) return;
+    this._fetchInFlight = true;
     try {
       const fromEpoch = Date.now() - (this.config.maxTaskAge * 1000);
       const response = await this.apiService.getTasks(fromEpoch);
-      
+
       if (response?.data) {
         const tasks = response.data.map(item => ({
           id: item.id,
           ...item.attributes
         }));
-        
+
         this.store.setTasks(tasks);
-        
+
         const taskIds = tasks.map(t => t.id);
         const existingIds = Array.from(this.store.callerIds.keys());
         const missingIds = taskIds.filter(id => !existingIds.includes(id));
-        
+
         if (missingIds.length > 0) {
           const callerIds = await this.callerIdService.fetchCallerIds(missingIds);
           callerIds.forEach(info => {
             if (info.InteractionId) {
               this.store.setCallerId(info.InteractionId, info);
-              
+
               // Extract custom fields
               const customFields = {};
               Object.keys(info).forEach(key => {
@@ -1250,13 +1025,15 @@ class CallSelectorWidget extends HTMLElement {
           });
         }
       }
-      
+
       this.lastRefresh = new Date();
       this.hasError = false;
-      
+
     } catch (error) {
       logger.error('Failed to fetch tasks:', error);
       this.handleError('Failed to load queue data');
+    } finally {
+      this._fetchInFlight = false;
     }
   }
 
@@ -1268,17 +1045,9 @@ class CallSelectorWidget extends HTMLElement {
     
     try {
       logger.info('Attempting to claim task:', taskId);
-      
-      const assignResp = await fetch(`https://api.wxcc-us1.cisco.com/v1/tasks/${taskId}/assign`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${window.myAgentService.webex.token.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      logger.info('Claim response status:', assignResp.status);
-      
+      await this.apiService.assignTask(taskId);
+      logger.info('Claim successful:', taskId);
+
       setTimeout(() => {
         this.claimingTasks.delete(taskId);
         this.updateUI();
@@ -1301,6 +1070,9 @@ class CallSelectorWidget extends HTMLElement {
   cleanup() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.uiInterval) {
+      clearInterval(this.uiInterval);
     }
     if (this.socket) {
       this.socket.disconnect();
@@ -1349,35 +1121,20 @@ class CallSelectorWidget extends HTMLElement {
     const template = document.createElement('template');
     template.innerHTML = `
       <style>${styles}</style>
-      <div class="call-selector">
-        <div class="cs-header">
-          <div class="cs-header-left">
-            <div class="cs-branding">
-              <div class="cs-title">Call Selector</div>
-              <div class="cs-powered-by">
-                powered by <span class="cs-bs-text">bucher<span class="cs-plus">+</span>suter</span>
-              </div>
-            </div>
-          </div>
-          <div class="cs-connection-status ${this._socketConnected ? 'connected' : 'disconnected'}">
-            <span class="cs-connection-dot"></span>
-            <span>${this._socketConnected ? 'Live' : 'Offline'}</span>
-          </div>
-        </div>
-        
-        <div class="cs-filters" id="filters"></div>
-        
-        <div class="cs-queue-list" id="queueList"></div>
-        
-        <div class="cs-footer">
-          <div class="cs-footer-left">
-            <div class="cs-refresh-indicator" id="refreshIndicator">
-              ${ICONS.refresh}
-              <span id="lastRefresh">Refreshing...</span>
-            </div>
-          </div>
-          <div>v3.0.0</div>
-        </div>
+      <div class="cs-root">
+        <header class="cs-header">
+          <div class="cs-brand-name">Call Selector</div>
+          <div class="cs-live-dot ${this._socketConnected ? 'live' : 'offline'}" id="liveDot"></div>
+        </header>
+
+        <div class="cs-filters" id="filters" style="display:none"></div>
+
+        <main class="cs-main" id="queueList"></main>
+
+        <footer class="cs-footer">
+          <span id="lastRefresh">Loading...</span>
+          <span>v3.0.0</span>
+        </footer>
       </div>
     `;
     
@@ -1402,19 +1159,26 @@ class CallSelectorWidget extends HTMLElement {
   updateFilters() {
     const filtersEl = this.shadowRoot.getElementById('filters');
     if (!filtersEl) return;
-    
+
+    // Only show filter chips when admin has enabled multiple statuses
+    if (this.config.showStatuses.length <= 1) {
+      filtersEl.style.display = 'none';
+      return;
+    }
+
+    filtersEl.style.display = 'flex';
     const counts = this.store.getTaskCounts();
     const { filters } = this.store.getState();
-    
-    filtersEl.innerHTML = ['queued', 'assigned', 'abandoned', 'completed']
+
+    filtersEl.innerHTML = this.config.showStatuses
       .map(status => `
-        <div class="cs-filter-chip ${status} ${filters[status] ? 'active' : ''}" 
+        <div class="cs-filter-chip ${status} ${filters[status] !== false ? 'active' : ''}"
              data-filter="${status}">
           ${capitalizeFirst(status)}
           <span class="count">${counts[status]}</span>
         </div>
       `).join('');
-    
+
     filtersEl.querySelectorAll('.cs-filter-chip').forEach(chip => {
       chip.onclick = () => this.toggleFilter(chip.dataset.filter);
     });
@@ -1426,24 +1190,24 @@ class CallSelectorWidget extends HTMLElement {
     
     if (this.isLoading) {
       queueListEl.innerHTML = `
-        <div class="cs-loading">
-          <div class="cs-loading-spinner"></div>
-          <div class="cs-loading-text">Loading queue data...</div>
+        <div class="cs-state">
+          <div class="cs-spinner"></div>
+          <span class="cs-state-title">Loading queue data…</span>
         </div>
       `;
       return;
     }
-    
+
     if (this.hasError) {
       queueListEl.innerHTML = `
-        <div class="cs-error-state">
-          <div class="cs-error-icon">${ICONS.warning}</div>
-          <div class="cs-error-title">Connection Error</div>
-          <div class="cs-error-text">${this.errorMessage}</div>
+        <div class="cs-state">
+          <span class="cs-state-title">Connection Error</span>
+          <span class="cs-state-text">${escapeHtml(this.errorMessage)}</span>
           <button class="cs-retry-btn" id="retryBtn">Try Again</button>
         </div>
       `;
       this.shadowRoot.getElementById('retryBtn').onclick = () => {
+        this.cleanup();
         this.hasError = false;
         this.isLoading = true;
         this.updateUI();
@@ -1451,29 +1215,21 @@ class CallSelectorWidget extends HTMLElement {
       };
       return;
     }
-    
-    const queueGroups = this.store.getTasksGroupedByQueue();
-    
+
+    const queueGroups = this.store.getTasksGroupedByQueue(this.config.showStatuses);
+
     if (queueGroups.length === 0) {
       queueListEl.innerHTML = `
-        <div class="cs-empty-state">
-          <div class="cs-empty-icon">${ICONS.inbox}</div>
-          <div class="cs-empty-title">No calls in queue</div>
-          <div class="cs-empty-text">
-            Calls will appear here automatically when they enter your configured queues.
-          </div>
+        <div class="cs-state">
+          <span class="cs-state-title">No calls waiting</span>
+          <span class="cs-state-text">Calls will appear here when they enter your queues.</span>
         </div>
       `;
       return;
     }
-    
+
     queueListEl.innerHTML = queueGroups.map(group => this.renderQueueGroup(group)).join('');
-    
-    // Bind queue header click events
-    queueListEl.querySelectorAll('.cs-queue-header').forEach(header => {
-      header.onclick = () => this.toggleQueueCollapse(header.dataset.queueId);
-    });
-    
+
     // Bind claim button events
     queueListEl.querySelectorAll('.cs-claim-btn').forEach(btn => {
       btn.onclick = (e) => {
@@ -1484,25 +1240,16 @@ class CallSelectorWidget extends HTMLElement {
   }
 
   renderQueueGroup(group) {
-    const isCollapsed = this.collapsedQueues.has(group.id);
-    
     return `
-      <div class="cs-queue-group ${isCollapsed ? 'collapsed' : ''}" data-queue-id="${group.id}">
-        <div class="cs-queue-header" data-queue-id="${group.id}">
-          <div class="cs-queue-name">
-            ${ICONS.queue}
-            <span>${group.name}</span>
-          </div>
-          <div class="cs-queue-count">
-            ${group.queuedCount > 0 ? `<span class="cs-queue-badge queued">${group.queuedCount} waiting</span>` : ''}
-            <span class="cs-queue-badge total">${group.totalCount} total</span>
-            <span class="cs-queue-chevron">${ICONS.chevron}</span>
-          </div>
+      <section class="cs-queue-section">
+        <div class="cs-queue-label">
+          <span class="cs-queue-name-text">${escapeHtml(group.name)}</span>
+          <span class="cs-queue-count-badge">${group.queuedCount}</span>
         </div>
-        <div class="cs-queue-tasks">
+        <div class="cs-card-grid">
           ${group.tasks.map(task => this.renderTaskCard(task)).join('')}
         </div>
-      </div>
+      </section>
     `;
   }
 
@@ -1510,61 +1257,38 @@ class CallSelectorWidget extends HTMLElement {
     const status = this.store.normalizeStatus(task.status);
     const isClaimable = ['queued', 'created'].includes(task.status);
     const isClaiming = this.claimingTasks.has(task.id);
+    const urgencyClass = getUrgencyClass(task.createdTime);
     const waitTime = formatDuration(Date.now() - task.createdTime);
-    
+
     const callerInfo = task.callerInfo || {};
     const customFields = task.customFields || {};
     const callerName = customFields.customerName || parseCallerName(callerInfo.Headers) || callerInfo.callerName;
     const phoneNumber = formatPhoneNumber(task.origin);
-    const priority = customFields.priority;
-    
-    // Determine priority class for styling
-    let priorityClass = '';
-    if (priority) {
-      const p = priority.toString().toLowerCase();
-      if (p === 'high' || p === '1' || p === 'urgent') priorityClass = 'priority-high';
-      else if (p === 'medium' || p === '2' || p === 'normal') priorityClass = 'priority-medium';
-    }
-    
+
+    // Show status badge only when admin has enabled multiple statuses
+    const showStatusBadge = this.config.showStatuses.length > 1;
+
     return `
-      <div class="cs-task-card ${isClaimable ? '' : 'faded'}" data-task-id="${task.id}">
-        <div class="cs-task-header">
-          <div class="cs-task-status ${status}">
-            <span class="cs-task-status-dot"></span>
-            ${capitalizeFirst(status)}
-          </div>
-          <div class="cs-task-time">${waitTime}</div>
+      <div class="cs-card ${urgencyClass}" data-task-id="${task.id}">
+        <div class="cs-card-phone">${escapeHtml(phoneNumber)}</div>
+        ${callerName ? `<div class="cs-card-name">${escapeHtml(callerName)}</div>` : ''}
+        <div class="cs-card-meta">
+          <span class="cs-card-wait ${urgencyClass}">${waitTime}</span>
+          ${showStatusBadge ? `<span class="cs-status-badge ${status}">${capitalizeFirst(status)}</span>` : ''}
         </div>
-        <div class="cs-task-body">
-          <div class="cs-task-main">
-            <div class="cs-task-caller">
-              <div class="cs-task-avatar ${priorityClass}">${ICONS.user}</div>
-              <div class="cs-task-caller-info">
-                <div class="cs-task-phone">${phoneNumber}</div>
-                ${callerName ? `<div class="cs-task-name">${callerName}</div>` : ''}
-              </div>
-            </div>
-            ${isClaimable ? `
-              <button class="cs-claim-btn ${isClaiming ? 'loading' : ''}" 
-                      data-task-id="${task.id}"
-                      ${isClaiming ? 'disabled' : ''}>
-                ${ICONS.target}
-                <span>Claim</span>
-              </button>
-            ` : ''}
-          </div>
-          ${this.renderCustomFields(customFields)}
-        </div>
+        ${this.renderCustomFields(customFields)}
+        ${isClaimable ? `
+          <button class="cs-claim-btn" data-task-id="${task.id}" ${isClaiming ? 'disabled' : ''}>
+            ${isClaiming ? 'Claiming…' : 'Claim'}
+          </button>
+        ` : ''}
       </div>
     `;
   }
 
   renderCustomFields(customFields) {
-    if (!customFields || Object.keys(customFields).length === 0) {
-      return '';
-    }
+    if (!customFields || Object.keys(customFields).length === 0) return '';
 
-    // Map of field names to display labels
     const fieldLabels = {
       priority: 'Priority',
       customerName: 'Customer',
@@ -1580,25 +1304,14 @@ class CallSelectorWidget extends HTMLElement {
     };
 
     const fieldsToShow = this.displayFields.filter(field => customFields[field]);
-    
-    if (fieldsToShow.length === 0) {
-      return '';
-    }
-
-    let priorityClass = '';
-    if (customFields.priority) {
-      const p = customFields.priority.toString().toLowerCase();
-      if (p === 'high' || p === '1' || p === 'urgent') priorityClass = 'priority-high';
-      else if (p === 'medium' || p === '2' || p === 'normal') priorityClass = 'priority-medium';
-    }
+    if (fieldsToShow.length === 0) return '';
 
     return `
-      <div class="cs-task-fields">
+      <div class="cs-card-fields">
         ${fieldsToShow.map(field => `
-          <div class="cs-task-field ${field === 'priority' ? priorityClass : ''}">
-            <span class="cs-task-field-label">${fieldLabels[field] || capitalizeFirst(field)}:</span>
-            <span class="cs-task-field-value">${customFields[field]}</span>
-          </div>
+          <span class="cs-field-badge" title="${escapeHtml(fieldLabels[field] || capitalizeFirst(field))}: ${escapeHtml(customFields[field])}">
+            ${escapeHtml(fieldLabels[field] || capitalizeFirst(field))}: ${escapeHtml(customFields[field])}
+          </span>
         `).join('')}
       </div>
     `;
@@ -1608,7 +1321,7 @@ class CallSelectorWidget extends HTMLElement {
     // Update wait times without full re-render
     this.shadowRoot.querySelectorAll('.cs-task-card').forEach(card => {
       const taskId = card.dataset.taskId;
-      const tasks = this.store.getFilteredTasks();
+      const tasks = this.store.getFilteredTasks(this.config.showStatuses);
       const task = tasks.find(t => t.id === taskId);
       
       if (task) {
@@ -1621,22 +1334,17 @@ class CallSelectorWidget extends HTMLElement {
   }
 
   updateConnectionStatus() {
-    const statusEl = this.shadowRoot.querySelector('.cs-connection-status');
-    if (statusEl) {
-      statusEl.className = `cs-connection-status ${this._socketConnected ? 'connected' : 'disconnected'}`;
-      statusEl.innerHTML = `
-        <span class="cs-connection-dot"></span>
-        <span>${this._socketConnected ? 'Live' : 'Offline'}</span>
-      `;
+    const dot = this.shadowRoot.getElementById('liveDot');
+    if (dot) {
+      dot.className = `cs-live-dot ${this._socketConnected ? 'live' : 'offline'}`;
     }
   }
 
   updateRefreshIndicator() {
-    const lastRefreshEl = this.shadowRoot.getElementById('lastRefresh');
-    
-    if (lastRefreshEl && this.lastRefresh) {
+    const el = this.shadowRoot.getElementById('lastRefresh');
+    if (el && this.lastRefresh) {
       const seconds = Math.floor((Date.now() - this.lastRefresh.getTime()) / 1000);
-      lastRefreshEl.textContent = seconds < 5 ? 'Just now' : `${seconds}s ago`;
+      el.textContent = seconds < 5 ? 'Updated just now' : `Updated ${seconds}s ago`;
     }
   }
 }

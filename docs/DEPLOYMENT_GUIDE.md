@@ -1,28 +1,26 @@
-# WxCC Cherry Picker Widget - Deployment Guide
+# Call Selector Widget — Deployment Guide
 
 ## Complete Setup Guide
 
-**Estimated Time:** 45-60 minutes  
+**Estimated Time:** 45–60 minutes  
 **Skill Level:** Intermediate (basic familiarity with web hosting and WxCC administration)
 
 ---
 
 ## Overview
 
-This guide walks you through deploying the Cherry Picker Widget and configuring your Webex Contact Center to use it. By the end, your agents will be able to view and selectively claim voice calls from the queue.
-
-### What You'll Be Setting Up
+This guide walks you through deploying the Call Selector Widget and configuring your Webex Contact Center to use it. By the end, your agents will be able to view and selectively claim voice calls from the queue in real time.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         YOUR DEPLOYMENT                              │
 │                                                                      │
 │   ┌─────────────────┐         ┌─────────────────────────────────┐   │
-│   │  Cherry Picker  │         │      Webex Contact Center       │   │
+│   │  Call Selector  │         │      Webex Contact Center       │   │
 │   │  Web Service    │◄───────►│                                 │   │
 │   │  (Render.com)   │         │  • Queue (manuallyAssignable)   │   │
 │   └────────┬────────┘         │  • MMP (telephony: 1)           │   │
-│            │                  │  • Flow (HTTP Request)          │   │
+│            │                  │  • Flow (HTTP Request nodes)    │   │
 │            │                  │  • Desktop Layout               │   │
 │            ▼                  │                                 │   │
 │   ┌─────────────────┐         │                                 │   │
@@ -49,8 +47,6 @@ This guide walks you through deploying the Cherry Picker Widget and configuring 
 
 ## Step 1: Prerequisites
 
-Before you begin, ensure you have the following:
-
 ### Required Accounts
 
 | Account | Purpose | Sign Up |
@@ -67,77 +63,50 @@ Before you begin, ensure you have the following:
 
 ### Information You'll Need
 
-Gather this information before starting:
-
 | Item | Where to Find It |
 |------|------------------|
 | **Organization ID** | Control Hub > Account > Org ID |
-| **Queue ID** | Control Hub > Contact Center > Queues > (select queue) > URL or details |
-| **MMP ID** | Control Hub > Contact Center > Multimedia Profiles > (select profile) |
+| **Queue ID** | Control Hub > Contact Center > Queues > select queue > URL |
+| **MMP ID** | Control Hub > Contact Center > Multimedia Profiles > select profile |
 | **API Access Token** | https://developer.webex.com > Sign In > My Access Token |
 
 ### Your WxCC Region
 
-Identify your region from your WxCC portal URL:
-
-| If your URL contains... | Your region is | API Base URL |
-|-------------------------|----------------|--------------|
-| wxcc-us1 | US | api.wxcc-us1.cisco.com |
-| wxcc-eu1 | EU (Frankfurt) | api.wxcc-eu1.cisco.com |
-| wxcc-eu2 | EU (London) | api.wxcc-eu2.cisco.com |
-| wxcc-anz1 | Australia/NZ | api.wxcc-anz1.cisco.com |
-| wxcc-ca1 | Canada | api.wxcc-ca1.cisco.com |
-| wxcc-jp1 | Japan | api.wxcc-jp1.cisco.com |
-| wxcc-sg1 | Singapore | api.wxcc-sg1.cisco.com |
+| If your URL contains... | Region value | API Base URL |
+|-------------------------|--------------|--------------|
+| wxcc-us1 | `us1` | api.wxcc-us1.cisco.com |
+| wxcc-eu1 | `eu1` | api.wxcc-eu1.cisco.com |
+| wxcc-eu2 | `eu2` | api.wxcc-eu2.cisco.com |
+| wxcc-anz1 | `anz1` | api.wxcc-anz1.cisco.com |
+| wxcc-ca1 | `ca1` | api.wxcc-ca1.cisco.com |
+| wxcc-jp1 | `jp1` | api.wxcc-jp1.cisco.com |
+| wxcc-sg1 | `sg1` | api.wxcc-sg1.cisco.com |
 
 ---
 
 ## Step 2: Deploy to Render.com
 
-Render.com provides free hosting with automatic SSL - perfect for getting started.
-
 ### 2.1 Fork the Repository
 
-1. Go to the Cherry Picker repository:
-   ```
-   https://github.com/bsolutions/busu-cherry-picker
-   ```
-
-2. Click the **"Fork"** button in the top right
-
-3. Select your GitHub account as the destination
-
-4. Wait for the fork to complete - you now have your own copy
+1. Go to: `https://github.com/kadammmmm/busu-cherry-picker`
+2. Click **Fork** > select your GitHub account
 
 ### 2.2 Create Render.com Account
 
 1. Go to https://render.com
-
-2. Click **"Get Started for Free"**
-
-3. Select **"Sign up with GitHub"** (recommended - makes deployment easier)
-
-4. Authorize Render to access your GitHub account
+2. Sign up with GitHub (recommended)
 
 ### 2.3 Create New Web Service
 
-1. From your Render dashboard, click **"New +"**
-
-2. Select **"Web Service"**
-
-3. Connect your forked repository:
-   - If prompted, click **"Configure account"** to give Render access to your repos
-   - Find and select **busu-cherry-picker**
-   - Click **"Connect"**
+1. Click **New +** > **Web Service**
+2. Connect your forked `busu-cherry-picker` repository
 
 ### 2.4 Configure the Web Service
-
-Fill in the following settings:
 
 | Setting | Value |
 |---------|-------|
 | **Name** | `busu-cherry-picker` (or your preferred name) |
-| **Region** | Select the region closest to your agents |
+| **Region** | Closest to your agents |
 | **Branch** | `main` |
 | **Runtime** | `Node` |
 | **Build Command** | `npm install && npm run build` |
@@ -145,16 +114,16 @@ Fill in the following settings:
 
 ### 2.5 Select Instance Type
 
-| Environment | Recommended Plan | Cost |
-|-------------|------------------|------|
+| Environment | Plan | Cost |
+|-------------|------|------|
 | Testing/Demo | Free | $0/month |
 | Production | Starter | $7/month |
 
-> **Note:** Free tier instances spin down after 15 minutes of inactivity. First request after idle takes 30-60 seconds. For production, use Starter plan.
+> **Note:** Free tier instances spin down after 15 minutes of inactivity. For production, use Starter plan.
 
 ### 2.6 Add Environment Variables
 
-Click **"Advanced"** to expand additional options, then add these environment variables:
+Click **Advanced** and add:
 
 | Key | Value |
 |-----|-------|
@@ -163,79 +132,62 @@ Click **"Advanced"** to expand additional options, then add these environment va
 | `CORS_ORIGINS` | `https://desktop.wxcc-us1.cisco.com` |
 | `NODE_ENV` | `production` |
 | `LOG_LEVEL` | `info` |
+| `API_KEY` | A long random secret string |
+| `ADMIN_KEY` | A different long random secret string |
 
-**Important:** 
-- Replace `[your-app-name]` with the name you chose in step 2.4
-- Replace `wxcc-us1` with your region if different (see Step 1)
-- For multiple regions, comma-separate: `https://desktop.wxcc-us1.cisco.com,https://desktop.wxcc-eu1.cisco.com`
+> **Security:** `API_KEY` protects the call ingestion endpoint. Your WxCC flow HTTP Request node must send this as the `x-api-key` header. `ADMIN_KEY` protects the `/admin/*` endpoints.
+
+For multiple WxCC regions in `CORS_ORIGINS`, comma-separate them:
+```
+https://desktop.wxcc-us1.cisco.com,https://desktop.wxcc-eu1.cisco.com
+```
 
 ### 2.7 Deploy
 
-1. Click **"Create Web Service"**
-
-2. Wait for the build to complete (typically 3-5 minutes)
-
-3. Look for the green **"Live"** indicator
+1. Click **Create Web Service**
+2. Wait for the build to complete (3–5 minutes)
+3. Look for the green **Live** indicator
 
 ### 2.8 Verify Deployment
 
-1. Copy your Render URL (shown at the top of the service page):
-   ```
-   https://[your-app-name].onrender.com
-   ```
+Open in browser:
+```
+https://[your-app-name].onrender.com/health
+```
 
-2. Open in browser and add `/health`:
-   ```
-   https://[your-app-name].onrender.com/health
-   ```
+You should see:
+```json
+{
+  "status": "healthy",
+  "timestamp": "...",
+  "version": "3.0.0"
+}
+```
 
-3. You should see:
-   ```json
-   {
-     "status": "healthy",
-     "timestamp": "2025-02-26T12:00:00.000Z",
-     "version": "2.0.0"
-   }
-   ```
-
-**Save your Render URL - you'll need it for the remaining steps!**
+**Save your Render URL — you'll need it for the remaining steps.**
 
 ---
 
 ## Step 3: Configure WxCC Queue
 
-The queue must allow manual task assignment for cherry-picking to work.
-
 ### 3.1 Get an API Access Token
 
 1. Go to https://developer.webex.com
 2. Sign in with your WxCC admin account
-3. Click your profile icon in the top right
-4. Click **"My Webex Developer Info"**
-5. Copy the **Personal Access Token** (valid for 12 hours)
+3. Click your profile icon > **My Webex Developer Info**
+4. Copy the **Personal Access Token** (valid 12 hours)
 
 ### 3.2 Get Your Current Queue Configuration
-
-Using Postman, Bruno, or cURL:
 
 ```bash
 curl --request GET \
   --url 'https://api.wxcc-us1.cisco.com/organization/YOUR_ORG_ID/contact-service-queue/YOUR_QUEUE_ID' \
-  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-  --header 'Content-Type: application/json'
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 ```
 
-**Replace:**
-- `YOUR_ORG_ID` - Your organization ID
-- `YOUR_QUEUE_ID` - Your queue ID  
-- `YOUR_ACCESS_TOKEN` - Token from step 3.1
-- `wxcc-us1` - Your region if different
-
-**Save the response** - you'll need the existing properties for the update.
+**Save the response** — you'll need the existing properties for the update.
 
 ### 3.3 Update Queue to Enable Manual Assignment
-
-Send a PUT request with the existing properties PLUS `"manuallyAssignable": true`:
 
 ```bash
 curl --request PUT \
@@ -248,11 +200,11 @@ curl --request PUT \
   }'
 ```
 
-> **Important:** Include all required existing properties from your GET response. The example above is simplified.
+> Include all required existing properties from your GET response.
 
 ### 3.4 Verify the Change
 
-Run the GET request again and confirm the response includes:
+Run the GET request again and confirm:
 ```json
 "manuallyAssignable": true
 ```
@@ -261,15 +213,12 @@ Run the GET request again and confirm the response includes:
 
 ## Step 4: Configure Multimedia Profile
 
-Agents need their Multimedia Profile (MMP) updated to allow manual task pickup.
-
 ### 4.1 Get Your Current MMP Configuration
 
 ```bash
 curl --request GET \
   --url 'https://api.wxcc-us1.cisco.com/organization/YOUR_ORG_ID/multimedia-profile/YOUR_MMP_ID' \
-  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-  --header 'Content-Type: application/json'
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 ```
 
 ### 4.2 Update MMP for Manual Assignment
@@ -290,120 +239,138 @@ curl --request PUT \
   }'
 ```
 
-The `"telephony": 1` setting allows agents to manually pick up 1 voice call at a time.
+### 4.3 Verify
 
-### 4.3 Verify the Change
-
-Run the GET request again and confirm `manuallyAssignable.telephony` is set to `1`.
+Confirm `manuallyAssignable.telephony` is `1`.
 
 ---
 
 ## Step 5: Configure the Flow
 
-The flow sends caller information to your Cherry Picker service when calls enter the queue.
+Two HTTP Request nodes are needed for full real-time behaviour. Both POST to the same endpoint.
 
-### 5.1 Open Flow Designer
+### 5.1 Node 1 — Call Arrival (required)
 
-1. Go to **Control Hub** > **Contact Center** > **Flows**
-2. Open your voice flow (or create a new one)
+Triggers when a call enters the flow.
 
-### 5.2 Add HTTP Request Node
-
-1. From the Activity Library, drag **HTTP Request** onto the canvas
-2. Place it **AFTER** the "NewPhoneContact" event
-3. Place it **BEFORE** the "Queue Contact" node
-
-### 5.3 Configure the HTTP Request
-
-Click on the HTTP Request node and set:
+**Placement:** After `NewPhoneContact` (after any Set Variable nodes), before `Queue Contact`. Connect the error output to `Queue Contact` so calls still queue if the service is unavailable.
 
 | Setting | Value |
 |---------|-------|
-| **Request URL** | `https://[your-app-name].onrender.com/` |
 | **Method** | `POST` |
-| **Content Type** | `Application/JSON` |
+| **URL** | `https://[your-app-name].onrender.com/` |
+| **Header** | `x-api-key: YOUR_API_KEY` |
+| **Content-Type** | `Application/JSON` |
 
-**Request Body** (copy exactly):
-
+**Request Body:**
 ```json
-{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","CallbackType":"{{NewPhoneContact.CallbackType}}","CallbackReason":"{{NewPhoneContact.CallbackReason}}"}
+{
+  "ANI": "{{NewPhoneContact.ANI}}",
+  "DNIS": "{{NewPhoneContact.DNIS}}",
+  "InteractionId": "{{NewPhoneContact.InteractionId}}",
+  "OrgId": "{{NewPhoneContact.OrgId}}",
+  "Headers": "{{NewPhoneContact.Headers}}",
+  "EntryPointId": "{{NewPhoneContact.EntryPointId}}",
+  "FlowId": "{{NewPhoneContact.FlowId}}",
+  "priority": "{{priority}}",
+  "customerName": "{{customerName}}",
+  "accountNumber": "{{accountNumber}}",
+  "callReason": "{{callReason}}"
+}
 ```
 
-### 5.4 Connect the Nodes
+> Replace the variable names with your actual flow variable names.
 
-Your flow should look like:
+### 5.2 Node 2 — Call Abandoned (optional, recommended)
+
+Without this node, abandoned calls are removed on the next poll cycle (default 5 seconds). With it, they are removed from the widget immediately.
+
+**Placement:** Triggered by the `AgentContactAbandoned` (or equivalent) event in your flow.
+
+| Setting | Value |
+|---------|-------|
+| **Method** | `POST` |
+| **URL** | `https://[your-app-name].onrender.com/` |
+| **Header** | `x-api-key: YOUR_API_KEY` |
+| **Content-Type** | `Application/JSON` |
+
+**Request Body:**
+```json
+{
+  "InteractionId": "{{NewPhoneContact.InteractionId}}",
+  "OrgId": "{{NewPhoneContact.OrgId}}",
+  "eventType": "abandoned"
+}
+```
+
+### 5.3 Flow Structure
 
 ```
-[New Phone Contact] 
+[New Phone Contact]
         │
         ▼
-[HTTP Request] ─── Error ───┐
-        │                   │
-        │ Success           │
-        ▼                   │
-[Queue Contact] ◄───────────┘
+[HTTP Request: Call Arrival] ── Error ──┐
+        │                               │
+        │ Success                       │
+        ▼                               │
+[Queue Contact] ◄───────────────────────┘
         │
         ▼
    (continue...)
+
+[AgentContactAbandoned event]
+        │
+        ▼
+[HTTP Request: Abandon Notification] ── (error output: no-op)
 ```
 
-> **Tip:** Connect the HTTP Request error output to Queue Contact so calls still queue even if the widget service is temporarily unavailable.
+### 5.4 Validate and Publish
 
-### 5.5 Validate and Publish
-
-1. Click **Validate** to check for errors
+1. Click **Validate**
 2. Fix any issues
-3. Click **Publish** to make the flow live
+3. Click **Publish**
 
 ---
 
 ## Step 6: Add Widget to Desktop Layout
 
-### 6.1 Prepare the Navigation Snippet
+### 6.1 Desktop Layout Snippet
 
-Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
+Replace `[your-app-name]` and `[your-region]` with your values:
 
 ```json
 {
   "nav": {
-    "label": "Cherry Picker",
+    "label": "Call Selector",
     "icon": "call-voicemail",
     "iconType": "momentum",
-    "navigateTo": "cherry-picker",
+    "navigateTo": "call-selector",
     "align": "top"
   },
   "page": {
-    "id": "cherry-picker",
+    "id": "call-selector",
     "widgets": {
-      "comp2": {
-        "comp": "div",
-        "style": {
-          "height": "100%",
-          "overflow": "scroll"
+      "selector-area": {
+        "comp": "call-selector-widget",
+        "script": "https://[your-app-name].onrender.com/build/bundle.js",
+        "attributes": {
+          "darkmode": "$STORE.app.darkMode",
+          "region": "[your-region]",
+          "refreshinterval": "5",
+          "showstatuses": "queued"
         },
-        "children": [
-          {
-            "comp": "sa-ds-voice-sdk",
-            "script": "https://[your-app-name].onrender.com/build/bundle.js",
-            "wrapper": {
-              "title": "Cherry Picker",
-              "maximizeAreaName": "app-maximize-area"
-            },
-            "attributes": {
-              "darkmode": "$STORE.app.darkMode"
-            },
-            "properties": {
-              "accessToken": "$STORE.auth.accessToken",
-              "outdialEp": "$STORE.agent.outDialEp"
-            }
-          }
-        ]
+        "properties": {
+          "accessToken": "$STORE.auth.accessToken"
+        }
+      },
+      "main-area": {
+        "comp": "agentx-wc-interaction-control"
       }
     },
     "layout": {
-      "areas": [["comp2"]],
+      "areas": [["selector-area", "main-area"]],
       "size": {
-        "cols": [1],
+        "cols": ["30%", "70%"],
         "rows": [1]
       }
     }
@@ -411,34 +378,29 @@ Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
 }
 ```
 
+**Widget attribute options:**
+
+| Attribute | Default | Notes |
+|-----------|---------|-------|
+| `region` | `us1` | Match your WxCC portal region |
+| `refreshinterval` | `5` | Poll interval in seconds |
+| `showstatuses` | `queued` | Comma-separated: `queued`, `assigned`, `abandoned`, `completed` |
+| `displayfields` | standard set | JSON array of custom field keys to show |
+
 ### 6.2 Add to Your Desktop Layout
 
-**Option A: Edit Existing Layout**
-
-1. Go to **Control Hub** > **Contact Center** > **Desktop Layouts**
-2. Click on your existing layout
+1. Go to **Control Hub > Contact Center > Desktop Layouts**
+2. Open your existing layout
 3. Click the **JSON** tab
-4. Find the `"navigation": [` array
-5. Add a comma after the last item in the array
-6. Paste the snippet from step 6.1
-7. Click **Save**
-
-**Option B: Create New Layout**
-
-1. Go to **Control Hub** > **Contact Center** > **Desktop Layouts**
-2. Click **"New Layout"**
-3. Enter a name (e.g., "Desktop with Cherry Picker")
-4. Click the **JSON** tab
-5. Paste a complete layout JSON that includes the navigation snippet
-6. Click **Save**
+4. Add the snippet above to the `"navigation"` array
+5. Click **Save**
 
 ### 6.3 Assign Layout to Team
 
-1. Go to **Control Hub** > **Contact Center** > **Teams**
-2. Click on the team that will use Cherry Picker
-3. Click **Edit**
-4. Set **Desktop Layout** to your updated layout
-5. Click **Save**
+1. Go to **Control Hub > Contact Center > Teams**
+2. Click the team > **Edit**
+3. Set **Desktop Layout** to your updated layout
+4. Click **Save**
 
 ---
 
@@ -446,41 +408,31 @@ Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
 
 ### 7.1 Agent Login
 
-1. Open Agent Desktop for your region:
-   - US: https://desktop.wxcc-us1.cisco.com
-   - EU1: https://desktop.wxcc-eu1.cisco.com
-   - (etc.)
-   
-2. Log in with an agent from the team with the Cherry Picker layout
-
+1. Open Agent Desktop for your region (e.g. `https://desktop.wxcc-us1.cisco.com`)
+2. Log in with an agent from the team with the Call Selector layout
 3. Set status to **Available**
 
 ### 7.2 Verify Widget Loads
 
-1. Look for **"Cherry Picker"** in the left navigation bar (phone icon)
-2. Click on it
-3. You should see:
-   - Header with "Cherry Picker" title
-   - Connection status indicator
-   - Filter chips (Queued, Assigned, etc.)
-   - Empty state message if no calls
+1. Click **Call Selector** in the left navigation
+2. You should see the header with "Call Selector" branding and a live/offline indicator
 
 ### 7.3 Test with a Call
 
 1. Call the phone number for your entry point
-2. The call should appear in the widget within 1-2 seconds
-3. You should see:
-   - Caller's phone number
-   - Queue name
-   - Wait time (updating live)
-   - Green "Claim Call" button
+2. The call should appear in the widget within 1–2 seconds
+3. You should see: caller's phone number, queue name, wait time (updating live), and a **Claim** button
 
 ### 7.4 Claim the Call
 
-1. Click **"Claim Call"**
-2. Button shows loading spinner
-3. Call is delivered to your agent desktop
-4. Card updates to show "Assigned" status
+1. Click **Claim**
+2. The call is delivered to your agent desktop
+
+### 7.5 Test Abandon (if Node 2 is configured)
+
+1. Place a call to the queue
+2. Hang up before it is claimed
+3. The call card should disappear immediately (not after the next poll cycle)
 
 ---
 
@@ -488,39 +440,32 @@ Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
 
 ### Widget Not Loading
 
-**Symptom:** Blank space where widget should be
-
 | Check | Solution |
 |-------|----------|
 | Browser console (F12) | Look for CORS or 404 errors |
-| Script URL | Verify `https://[your-app-name].onrender.com/build/bundle.js` loads in browser |
+| Script URL | Verify `https://[your-app-name].onrender.com/build/bundle.js` loads |
+| CORS_ORIGINS | Must include your exact desktop URL |
 | Render service | Check it shows "Live" status |
-| CORS_ORIGINS | Must include your desktop URL exactly |
 
-### Widget Shows Offline/Disconnected
-
-**Symptom:** No "Live" indicator, connection errors
+### Widget Shows Offline
 
 | Check | Solution |
 |-------|----------|
 | Render logs | Check for errors in Render dashboard > Logs |
-| HOST_URI | Must match your actual Render URL |
-| Free tier | First request after idle takes 30-60s - wait and refresh |
+| HOST_URI | Must match your actual Render URL exactly |
+| Free tier cold start | First request after idle takes 30–60s — wait and refresh |
 
 ### Calls Not Appearing
-
-**Symptom:** Make calls but widget stays empty
 
 | Check | Solution |
 |-------|----------|
 | Flow published | Ensure flow is published, not just saved |
-| HTTP Request URL | Must match your Render URL exactly |
-| Render logs | Should see POST requests when calls come in |
+| HTTP Request URL | Must match your Render URL exactly (trailing slash required) |
+| API_KEY header | Render logs will show `401 Unauthorized` if key is missing/wrong |
+| Render logs | Should show POST requests when calls arrive |
 | Queue configured | Verify `manuallyAssignable: true` |
 
 ### Claim Button Not Working
-
-**Symptom:** Click claim but nothing happens
 
 | Check | Solution |
 |-------|----------|
@@ -528,25 +473,29 @@ Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
 | Agent permissions | Agent must have access to the queue |
 | Browser console | Look for 401/403 API errors |
 
-### Dark Mode Not Syncing
+### Abandoned Calls Not Disappearing Immediately
 
-**Symptom:** Widget doesn't change with desktop theme
+| Check | Solution |
+|-------|----------|
+| Node 2 configured | Add the abandon HTTP Request node to your flow (Step 5.2) |
+| Render logs | Should show a POST with `eventType: abandoned` when a call hangs up |
+| As fallback | Reduce `refreshinterval` attribute to `2` for faster poll-based removal |
+
+### Dark Mode Not Syncing
 
 | Check | Solution |
 |-------|----------|
 | Layout JSON | Verify `"darkmode": "$STORE.app.darkMode"` |
-| Re-upload layout | Sometimes requires fresh upload |
-| Clear cache | Hard refresh the agent desktop |
+| Re-upload layout | Sometimes requires a fresh upload |
 
 ---
 
 ## Quick Reference
 
-### Your URLs (fill these in)
+### Your URLs
 
 | Resource | URL |
 |----------|-----|
-| Render Dashboard | https://dashboard.render.com |
 | Your App | `https://________________.onrender.com` |
 | Health Check | `https://________________.onrender.com/health` |
 | Widget Bundle | `https://________________.onrender.com/build/bundle.js` |
@@ -559,137 +508,28 @@ Copy this JSON snippet and replace `[your-app-name]` with your Render app name:
 | `HOST_URI` | `https://[your-app-name].onrender.com` |
 | `CORS_ORIGINS` | `https://desktop.wxcc-[region].cisco.com` |
 | `NODE_ENV` | `production` |
-| `LOG_LEVEL` | `info` |
+| `API_KEY` | Your secret key (send as `x-api-key` from flow) |
+| `ADMIN_KEY` | Your admin key (send as `x-admin-key`) |
 
-### API Endpoints Reference
+### API Endpoints
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/` | POST | Receive call data from flow |
-| `/health` | GET | Health check |
-| `/callerIds` | POST | Retrieve cached caller info |
-
----
-
-## Appendix A: Complete Desktop Layout Navigation Snippet
-
-```json
-{
-  "nav": {
-    "label": "Cherry Picker",
-    "icon": "call-voicemail",
-    "iconType": "momentum",
-    "navigateTo": "cherry-picker",
-    "align": "top"
-  },
-  "page": {
-    "id": "cherry-picker",
-    "widgets": {
-      "comp2": {
-        "comp": "div",
-        "style": {
-          "height": "100%",
-          "overflow": "scroll"
-        },
-        "children": [
-          {
-            "comp": "sa-ds-voice-sdk",
-            "script": "https://[your-app-name].onrender.com/build/bundle.js",
-            "wrapper": {
-              "title": "Cherry Picker",
-              "maximizeAreaName": "app-maximize-area"
-            },
-            "attributes": {
-              "darkmode": "$STORE.app.darkMode"
-            },
-            "properties": {
-              "accessToken": "$STORE.auth.accessToken",
-              "outdialEp": "$STORE.agent.outDialEp"
-            }
-          }
-        ]
-      }
-    },
-    "layout": {
-      "areas": [["comp2"]],
-      "size": {
-        "cols": [1],
-        "rows": [1]
-      }
-    }
-  }
-}
-```
-
----
-
-## Appendix B: Flow HTTP Request Body
-
-Copy this exactly into your flow's HTTP Request body:
-
-```
-{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","CallbackType":"{{NewPhoneContact.CallbackType}}","CallbackReason":"{{NewPhoneContact.CallbackReason}}"}
-```
-
----
-
-## Appendix C: API Quick Reference
-
-### Get Queue
-
-```bash
-GET https://api.wxcc-{region}.cisco.com/organization/{orgId}/contact-service-queue/{queueId}
-Authorization: Bearer {token}
-```
-
-### Update Queue (enable manual assignment)
-
-```bash
-PUT https://api.wxcc-{region}.cisco.com/organization/{orgId}/contact-service-queue/{queueId}
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "name": "Queue Name",
-  "manuallyAssignable": true
-}
-```
-
-### Get MMP
-
-```bash
-GET https://api.wxcc-{region}.cisco.com/organization/{orgId}/multimedia-profile/{profileId}
-Authorization: Bearer {token}
-```
-
-### Update MMP (enable telephony manual assignment)
-
-```bash
-PUT https://api.wxcc-{region}.cisco.com/organization/{orgId}/multimedia-profile/{profileId}
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "name": "MMP Name",
-  "manuallyAssignable": {
-    "telephony": 1,
-    "chat": 0,
-    "email": 0,
-    "social": 0
-  }
-}
-```
+| Endpoint | Method | Auth | Purpose |
+|----------|--------|------|---------|
+| `/` | POST | `x-api-key` | Receive call events from flow |
+| `/health` | GET | none | Health check |
+| `/ready` | GET | none | Readiness probe |
+| `/callerIds` | POST | none | Retrieve cached caller info |
+| `/admin/cache` | GET | `x-admin-key` | Cache statistics |
+| `/admin/connections` | GET | `x-admin-key` | Connected agents |
+| `/admin/cache/clear` | POST | `x-admin-key` | Clear cache |
 
 ---
 
 ## Support
 
-For issues or questions:
-- **GitHub Issues**: [Repository Issues Page]
-- **Email**: support@bucher-suter.com
+- **GitHub Issues**: https://github.com/kadammmmm/busu-cherry-picker/issues
 
 ---
 
-**Document Version:** 2.0  
-**Last Updated:** February 2025  
-**Author:** B+S Solutions
+**Document Version:** 3.1  
+**Last Updated:** April 2026

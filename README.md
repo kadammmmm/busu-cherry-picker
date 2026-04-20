@@ -1,4 +1,4 @@
-# 📞 Call Selector Widget
+# Call Selector Widget
 
 <p align="center">
   <strong>A production-ready Webex Contact Center widget for voice queue selection</strong>
@@ -9,6 +9,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#security">Security</a> •
   <a href="#custom-fields">Custom Fields</a> •
   <a href="#api-reference">API</a>
 </p>
@@ -35,16 +36,16 @@ The Call Selector Widget enables Webex Contact Center agents to view and selecti
 ### Core Functionality
 - ✅ Real-time queue visibility
 - ✅ One-click call claiming
-- ✅ **Calls grouped by queue** for easy navigation
-- ✅ Collapsible queue sections
+- ✅ Calls grouped by queue for easy navigation
 - ✅ Instant call notifications via WebSocket
-- ✅ Filter by call status (Queued, Assigned, Abandoned, Completed)
+- ✅ Real-time abandon detection — abandoned calls removed immediately via socket event
+- ✅ Urgency coloring based on wait time (green → amber → red)
+- ✅ Filter by call status (configurable per deployment)
 - ✅ Caller ID display with name lookup
 
 ### Custom Fields Support
 - ✅ Display priority, customer name, account number, call reason
 - ✅ Configurable via desktop layout or flow variables
-- ✅ Priority-based color coding (high = red, medium = yellow)
 - ✅ Support for any custom field passed from flow
 
 ### Technical Capabilities
@@ -109,6 +110,8 @@ See the [Configuration](#configuration) section below.
 | `PORT` | `5000` |
 | `HOST_URI` | `https://your-app-name.onrender.com` |
 | `CORS_ORIGINS` | `https://desktop.wxcc-us1.cisco.com` |
+| `API_KEY` | *(a secret string — must match your WxCC flow header)* |
+| `ADMIN_KEY` | *(a secret string for admin endpoint access)* |
 
 6. Deploy and verify at `https://your-app-name.onrender.com/health`
 
@@ -202,7 +205,10 @@ Add the Call Selector widget to your desktop layout JSON:
         "comp": "call-selector-widget",
         "script": "https://YOUR-APP-HERE.onrender.com/build/bundle.js",
         "attributes": {
-          "darkmode": "$STORE.app.darkMode"
+          "darkmode": "$STORE.app.darkMode",
+          "region": "us1",
+          "refreshinterval": "5",
+          "showstatuses": "queued"
         },
         "properties": {
           "accessToken": "$STORE.auth.accessToken"
@@ -224,6 +230,82 @@ Add the Call Selector widget to your desktop layout JSON:
 ```
 
 Upload to Control Hub: **Contact Center > Desktop Layouts**
+
+### Widget Attributes
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `darkmode` | `false` | Sync with Agent Desktop dark mode. Use `"$STORE.app.darkMode"` |
+| `region` | `us1` | WxCC region: `us1`, `eu1`, `eu2`, `anz1`, `ca1`, `jp1`, `sg1` |
+| `refreshinterval` | `5` | Poll interval in seconds. Minimum recommended: `2` |
+| `showstatuses` | `queued` | Comma-separated statuses to display: `queued`, `assigned`, `abandoned`, `completed`. Defaults to queued-only for a clean agent view. |
+| `displayfields` | see below | JSON array or comma-separated list of custom field keys to show on each card |
+
+**Example — show multiple statuses and custom fields:**
+```json
+{
+  "attributes": {
+    "darkmode": "$STORE.app.darkMode",
+    "region": "us1",
+    "refreshinterval": "5",
+    "showstatuses": "queued,assigned",
+    "displayfields": "[\"priority\", \"customerName\", \"callReason\"]"
+  }
+}
+```
+
+---
+
+## Security
+
+### API Key (Ingestion Endpoint)
+
+The `POST /` endpoint receives call data from your WxCC flow. In production, protect it with an API key.
+
+**1. Set the key in your environment:**
+```
+API_KEY=your-secret-key-here
+```
+
+**2. Add the header to your WxCC flow HTTP Request node:**
+
+| Setting | Value |
+|---------|-------|
+| Header name | `x-api-key` |
+| Header value | *(your API_KEY value)* |
+
+If `API_KEY` is not set, the endpoint is open. A warning is logged at startup. This is acceptable for local development but **must be set in production**.
+
+---
+
+### Admin Key (Admin Endpoints)
+
+The `/admin/cache`, `/admin/connections`, and `/admin/cache/clear` endpoints expose cache contents and agent connection data. Protect them with an admin key.
+
+**Set in your environment:**
+```
+ADMIN_KEY=your-admin-key-here
+```
+
+**Send as a request header:**
+```
+x-admin-key: your-admin-key-here
+```
+
+If `ADMIN_KEY` is not set, admin endpoints are open. A warning is logged at startup.
+
+---
+
+### Rate Limiting
+
+Rate limiting is built in — no configuration required.
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /` | 60 requests / minute |
+| `/admin/*` | 30 requests / minute |
+
+Requests exceeding the limit receive a `429 Too Many Requests` response.
 
 ---
 
@@ -298,20 +380,57 @@ You can also use any custom field name - it will be displayed with a capitalized
 
 ## Flow Configuration
 
-### Complete HTTP Request Body Template
+### Node 1: Call Arrival (required)
 
+Place this HTTP Request node after `NewPhoneContact` (after any Set Variable nodes), before `Queue Contact`. Connect the error output to `Queue Contact` so calls queue even if the server is unavailable.
+
+| Setting | Value |
+|---------|-------|
+| Method | `POST` |
+| URL | `https://YOUR-APP.onrender.com/` |
+| Header | `x-api-key: YOUR_API_KEY` |
+| Content-Type | `Application/JSON` |
+
+**Request body:**
 ```json
-{"ANI":"{{NewPhoneContact.ANI}}","DNIS":"{{NewPhoneContact.DNIS}}","PSTNRegion":"{{NewPhoneContact.PSTNRegion}}","EntryPointId":"{{NewPhoneContact.EntryPointId}}","FlowId":"{{NewPhoneContact.FlowId}}","InteractionId":"{{NewPhoneContact.InteractionId}}","OrgId":"{{NewPhoneContact.OrgId}}","FlowVersionLabel":"{{NewPhoneContact.FlowVersionLabel}}","Headers":"{{NewPhoneContact.Headers}}","priority":"{{priority}}","customerName":"{{customerName}}","accountNumber":"{{accountNumber}}","callReason":"{{callReason}}"}
+{
+  "ANI": "{{NewPhoneContact.ANI}}",
+  "DNIS": "{{NewPhoneContact.DNIS}}",
+  "InteractionId": "{{NewPhoneContact.InteractionId}}",
+  "OrgId": "{{NewPhoneContact.OrgId}}",
+  "Headers": "{{NewPhoneContact.Headers}}",
+  "EntryPointId": "{{NewPhoneContact.EntryPointId}}",
+  "FlowId": "{{NewPhoneContact.FlowId}}",
+  "priority": "{{priority}}",
+  "customerName": "{{customerName}}",
+  "accountNumber": "{{accountNumber}}",
+  "callReason": "{{callReason}}"
+}
 ```
 
-### Flow Placement
+### Node 2: Call Abandoned (optional, for real-time removal)
 
-Place the HTTP Request node:
-1. **After** `NewPhoneContact` event
-2. **After** any `Set Variable` nodes that populate your custom fields
-3. **Before** the `Queue Contact` node
+Without this node, abandoned calls are removed on the next poll cycle (up to `refreshinterval` seconds). With it, the widget removes them instantly.
 
-Connect the error output of the HTTP Request to the Queue Contact node so calls aren't blocked if the server is unavailable.
+Add a second HTTP Request node triggered by the `AgentContactAbandoned` (or equivalent abandon) event in your flow.
+
+| Setting | Value |
+|---------|-------|
+| Method | `POST` |
+| URL | `https://YOUR-APP.onrender.com/` |
+| Header | `x-api-key: YOUR_API_KEY` |
+| Content-Type | `Application/JSON` |
+
+**Request body:**
+```json
+{
+  "InteractionId": "{{NewPhoneContact.InteractionId}}",
+  "OrgId": "{{NewPhoneContact.OrgId}}",
+  "eventType": "abandoned"
+}
+```
+
+The server recognises the `eventType: "abandoned"` field and broadcasts a targeted socket event without overwriting the cached caller ID data. The widget immediately removes the call card and confirms with the next API poll.
 
 ---
 
@@ -319,18 +438,26 @@ Connect the error output of the HTTP Request to the Queue Contact node so calls 
 
 ### POST /
 
-Receive call data from WxCC flow.
+Receive call data from WxCC flow. Protected by `x-api-key` header when `API_KEY` is set.
 
-**Request Body:**
+**Call arrival:**
 ```json
 {
   "InteractionId": "string",
   "ANI": "string",
   "DNIS": "string",
   "OrgId": "string",
-  "Headers": "string",
   "priority": "string",
   "customerName": "string"
+}
+```
+
+**Abandon notification:**
+```json
+{
+  "InteractionId": "string",
+  "OrgId": "string",
+  "eventType": "abandoned"
 }
 ```
 
@@ -376,10 +503,12 @@ Health check endpoint.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | 5000 | Server port |
-| `HOST_URI` | Yes | - | Public URL of the server |
+| `HOST_URI` | Yes | — | Public URL of the server |
 | `CORS_ORIGINS` | No | WxCC domains | Allowed CORS origins (comma-separated) |
+| `API_KEY` | Production | — | Protects `POST /`. Send as `x-api-key` header from WxCC flow. |
+| `ADMIN_KEY` | Production | — | Protects `/admin/*` endpoints. Send as `x-admin-key` header. |
 | `CACHE_TTL` | No | 3600 | Caller ID cache TTL in seconds |
-| `LOG_LEVEL` | No | info | Logging level (error, warn, info, debug) |
+| `LOG_LEVEL` | No | info | Logging level: `error`, `warn`, `info`, `debug` |
 
 ---
 
@@ -506,6 +635,7 @@ npm run build
 
 | Version | Changes |
 |---------|---------|
+| 3.1.0 | Real-time abandon handling, race condition fix (in-flight guard), brand refresh, `showstatuses` / `refreshinterval` widget attributes, API key + rate limiting security |
 | 3.0.0 | Renamed to Call Selector, queue grouping, custom fields support |
 | 2.0.0 | Production redesign, multi-region, dark mode, improved UI |
 | 1.0.0 | Initial release |
@@ -522,8 +652,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - Issues: [GitHub Issues](https://github.com/kadammmmm/busu-cherry-picker/issues)
 
----
-
-<p align="center">
-  Made with care by <a href="https://www.bucher-suter.com">bucher+suter</a>
-</p>
