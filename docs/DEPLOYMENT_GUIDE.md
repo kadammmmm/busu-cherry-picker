@@ -35,13 +35,14 @@ This guide walks you through deploying the Call Selector Widget and configuring 
 ## Table of Contents
 
 1. [Prerequisites](#step-1-prerequisites)
-2. [Deploy to Render.com](#step-2-deploy-to-rendercom)
-3. [Configure WxCC Queue](#step-3-configure-wxcc-queue)
-4. [Configure Multimedia Profile](#step-4-configure-multimedia-profile)
-5. [Configure the Flow](#step-5-configure-the-flow)
-6. [Add Widget to Desktop Layout](#step-6-add-widget-to-desktop-layout)
-7. [Test the Widget](#step-7-test-the-widget)
-8. [Troubleshooting](#step-8-troubleshooting)
+2. [Deploy to Render.com](#step-2-deploy-to-rendercom) *(cloud — quickest)*
+3. [Deploy to Windows Server](#step-3-deploy-to-windows-server) *(on-premise alternative)*
+4. [Configure WxCC Queue](#step-4-configure-wxcc-queue)
+5. [Configure Multimedia Profile](#step-5-configure-multimedia-profile)
+6. [Configure the Flow](#step-6-configure-the-flow)
+7. [Add Widget to Desktop Layout](#step-7-add-widget-to-desktop-layout)
+8. [Test the Widget](#step-8-test-the-widget)
+9. [Troubleshooting](#step-9-troubleshooting)
 
 ---
 
@@ -168,7 +169,194 @@ You should see:
 
 ---
 
-## Step 3: Configure WxCC Queue
+## Step 3: Deploy to Windows Server
+
+Use this option if you need to host the service on your own infrastructure rather than a cloud provider.
+
+**Estimated Time:** 30–45 minutes  
+**Requirements:** Windows Server 2016 or later, outbound internet access to WxCC API endpoints, a public hostname or IP accessible by the Agent Desktop browsers
+
+---
+
+### 3.1 Install Prerequisites
+
+**Node.js 18+**
+
+1. Download the Windows LTS installer from https://nodejs.org
+2. Run the installer — accept defaults, ensure **"Add to PATH"** is checked
+3. Open a new Command Prompt and verify:
+   ```
+   node --version
+   npm --version
+   ```
+
+**Git**
+
+1. Download from https://git-scm.com/download/win
+2. Install with defaults
+3. Verify: `git --version`
+
+**PM2** (process manager — keeps the app running and restarts it on crash or reboot)
+
+```cmd
+npm install -g pm2
+npm install -g pm2-windows-startup
+```
+
+---
+
+### 3.2 Get the Code
+
+Open Command Prompt or PowerShell as Administrator and run:
+
+```cmd
+cd C:\inetpub
+git clone https://github.com/kadammmmm/busu-cherry-picker.git call-selector
+cd call-selector
+```
+
+> You can clone to any directory. `C:\inetpub\call-selector` is a common convention for web services on Windows Server.
+
+---
+
+### 3.3 Install Dependencies and Build
+
+```cmd
+npm install
+npm run build
+```
+
+You should see `webpack compiled successfully` at the end of the build.
+
+---
+
+### 3.4 Configure Environment Variables
+
+Copy the example file and edit it:
+
+```cmd
+copy .env.example .env
+notepad .env
+```
+
+Set these values:
+
+```ini
+PORT=5000
+HOST_URI=https://your-server-hostname-or-ip
+CORS_ORIGINS=https://desktop.wxcc-us1.cisco.com
+NODE_ENV=production
+LOG_LEVEL=info
+API_KEY=your-secret-api-key-here
+ADMIN_KEY=your-secret-admin-key-here
+```
+
+> **HOST_URI** must be the public URL that Agent Desktop browsers can reach — either a hostname with DNS or a public IP. If you're using IIS as a reverse proxy (Step 3.6), this will be your IIS site URL.
+
+Save and close Notepad.
+
+---
+
+### 3.5 Run with PM2
+
+Start the app and configure it to launch on Windows startup:
+
+```cmd
+pm2 start index.js --name call-selector
+pm2 save
+pm2-startup install
+```
+
+**Useful PM2 commands:**
+
+| Command | Purpose |
+|---------|---------|
+| `pm2 status` | Check if the app is running |
+| `pm2 logs call-selector` | View live logs |
+| `pm2 restart call-selector` | Restart the app |
+| `pm2 stop call-selector` | Stop the app |
+
+**Verify the app is running:**
+
+```
+http://localhost:5000/health
+```
+
+You should see `{"status":"healthy",...}`.
+
+---
+
+### 3.6 Open Windows Firewall Port
+
+If agents access the server directly (no reverse proxy), open port 5000:
+
+1. Open **Windows Defender Firewall with Advanced Security**
+2. Click **Inbound Rules** → **New Rule**
+3. Select **Port** → **TCP** → **Specific local ports: 5000**
+4. Allow the connection
+5. Apply to Domain + Private profiles (add Public if needed)
+6. Name it `Call Selector Widget`
+
+---
+
+### 3.7 Set Up IIS as a Reverse Proxy (Recommended)
+
+Using IIS lets you serve the app on standard port 443 (HTTPS) with a proper SSL certificate, which is required for the WxCC Agent Desktop to load the widget securely.
+
+**Install required IIS modules:**
+
+1. Open **Server Manager** → **Manage** → **Add Roles and Features**
+2. Install **Web Server (IIS)** if not already installed
+3. Download and install:
+   - [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
+   - [Application Request Routing (ARR)](https://www.iis.net/downloads/microsoft/application-request-routing)
+
+**Enable ARR proxy:**
+
+1. Open **IIS Manager**
+2. Click the server node (top level) → **Application Request Routing Cache**
+3. Click **Server Proxy Settings** → check **Enable proxy** → **Apply**
+
+**Create the site:**
+
+1. In IIS Manager, right-click **Sites** → **Add Website**
+2. Set:
+   - Site name: `call-selector`
+   - Physical path: `C:\inetpub\call-selector\` (or any folder — IIS won't serve files directly, it just proxies)
+   - Binding: HTTPS, port 443, your hostname
+   - SSL certificate: select your certificate
+
+**Add URL Rewrite rule** to proxy all traffic to Node.js:
+
+1. Click your new site → **URL Rewrite** → **Add Rule** → **Reverse Proxy**
+2. Set **Inbound rule server name**: `localhost:5000`
+3. Click **OK**
+
+This creates a `web.config` in the site folder. Your app is now reachable at `https://your-hostname/`.
+
+Update `HOST_URI` in `.env` to match this URL and restart PM2:
+
+```cmd
+pm2 restart call-selector
+```
+
+---
+
+### 3.8 Verify the Deployment
+
+Open in a browser from a machine on the network:
+
+```
+https://your-hostname/health
+https://your-hostname/build/bundle.js
+```
+
+Both should respond. Use `https://your-hostname` as your server URL in the WxCC flow and desktop layout for the remaining steps.
+
+---
+
+## Step 4: Configure WxCC Queue
+
 
 ### 3.1 Get an API Access Token
 
@@ -211,7 +399,7 @@ Run the GET request again and confirm:
 
 ---
 
-## Step 4: Configure Multimedia Profile
+## Step 5: Configure Multimedia Profile
 
 ### 4.1 Get Your Current MMP Configuration
 
@@ -245,7 +433,7 @@ Confirm `manuallyAssignable.telephony` is `1`.
 
 ---
 
-## Step 5: Configure the Flow
+## Step 6: Configure the Flow
 
 Two HTTP Request nodes are needed for full real-time behaviour. Both POST to the same endpoint.
 
@@ -332,7 +520,7 @@ Without this node, abandoned calls are removed on the next poll cycle (default 5
 
 ---
 
-## Step 6: Add Widget to Desktop Layout
+## Step 7: Add Widget to Desktop Layout
 
 ### 6.1 Desktop Layout Snippet
 
@@ -406,7 +594,7 @@ Replace `[your-app-name]` and `[your-region]` with your values:
 
 ---
 
-## Step 7: Test the Widget
+## Step 8: Test the Widget
 
 ### 7.1 Agent Login
 
@@ -438,7 +626,7 @@ Replace `[your-app-name]` and `[your-region]` with your values:
 
 ---
 
-## Step 8: Troubleshooting
+## Step 9: Troubleshooting
 
 ### Widget Not Loading
 
