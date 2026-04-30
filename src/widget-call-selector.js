@@ -25,7 +25,7 @@ const WXCC_REGIONS = {
 
 const DEFAULT_CONFIG = {
   refreshInterval: 5,
-  maxTaskAge: 600,
+  maxTaskAge: 3600,
   region: 'us1',
   // Only queued calls shown by default. Admins can expand via the showstatuses widget attribute
   // e.g. showstatuses="queued,assigned,abandoned,completed"
@@ -776,7 +776,7 @@ class CallerIdService {
 
 class CallSelectorWidget extends HTMLElement {
   static get observedAttributes() {
-    return ['darkmode', 'region', 'refreshinterval', 'displayfields', 'showstatuses'];
+    return ['darkmode', 'region', 'refreshinterval', 'maxtaskage', 'displayfields', 'showstatuses'];
   }
 
   constructor() {
@@ -828,6 +828,9 @@ class CallSelectorWidget extends HTMLElement {
       case 'refreshinterval':
         this.config.refreshInterval = parseInt(newValue) || DEFAULT_CONFIG.refreshInterval;
         this.restartPolling();
+        break;
+      case 'maxtaskage':
+        this.config.maxTaskAge = parseInt(newValue) || DEFAULT_CONFIG.maxTaskAge;
         break;
       case 'displayfields':
         try {
