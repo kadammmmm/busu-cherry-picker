@@ -43,6 +43,7 @@ This guide walks you through deploying the Call Selector Widget and configuring 
 7. [Add Widget to Desktop Layout](#step-7-add-widget-to-desktop-layout)
 8. [Test the Widget](#step-8-test-the-widget)
 9. [Troubleshooting](#step-9-troubleshooting)
+10. [Security](#security)
 
 ---
 
@@ -136,7 +137,7 @@ Click **Advanced** and add:
 | `API_KEY` | A long random secret string |
 | `ADMIN_KEY` | A different long random secret string |
 
-> **Security:** `API_KEY` protects the call ingestion endpoint. Your WxCC flow HTTP Request node must send this as the `x-api-key` header. `ADMIN_KEY` protects the `/admin/*` endpoints.
+> **Security:** Both keys are optional but **must be set in production**. See the [Security](#security) section for full details on what each key protects and how to generate them.
 
 For multiple WxCC regions in `CORS_ORIGINS`, comma-separate them:
 ```
@@ -250,6 +251,8 @@ LOG_LEVEL=info
 API_KEY=your-secret-api-key-here
 ADMIN_KEY=your-secret-admin-key-here
 ```
+
+> Both keys are optional but **must be set in production**. See the [Security](#security) section for what they protect and how to generate them.
 
 > **HOST_URI** must be the public URL that Agent Desktop browsers can reach — either a hostname with DNS or a public IP. If you're using IIS as a reverse proxy (Step 3.6), this will be your IIS site URL.
 
@@ -677,6 +680,66 @@ Replace `[your-app-name]` and `[your-region]` with your values:
 |-------|----------|
 | Layout JSON | Verify `"darkmode": "$STORE.app.darkMode"` |
 | Re-upload layout | Sometimes requires a fresh upload |
+
+---
+
+## Security
+
+### API_KEY — Ingestion Endpoint Protection
+
+The `POST /` endpoint receives call data from your WxCC flow HTTP Request nodes. Without an API key, anyone who knows your server URL can POST arbitrary data to it — injecting fake calls into agents' widgets or spamming the caller ID cache.
+
+**How it works:**
+- Set `API_KEY` to any long random string in your `.env`
+- The server checks every `POST /` request for the header `x-api-key: <your key>`
+- Requests with a missing or incorrect key receive `401 Unauthorized` and are dropped
+- Your WxCC flow HTTP Request node must include this header (see Step 6)
+
+**If not set:** The endpoint is open and the server logs a warning at startup:
+```
+WARN: API_KEY is not set — ingestion endpoint is unauthenticated. Set API_KEY in production.
+```
+This is acceptable for local development only.
+
+---
+
+### ADMIN_KEY — Admin Endpoint Protection
+
+Three diagnostic endpoints expose internal server state:
+
+| Endpoint | What it exposes |
+|----------|----------------|
+| `GET /admin/cache` | All cached caller ID data (ANI, custom fields) for recent calls |
+| `GET /admin/connections` | List of agents currently connected via WebSocket |
+| `POST /admin/cache/clear` | Wipes the entire caller ID cache |
+
+Without an admin key these are open to anyone who knows your server URL.
+
+**How it works:**
+- Set `ADMIN_KEY` to a different long random string in your `.env`
+- Requests to `/admin/*` must include the header `x-admin-key: <your key>`
+- Requests without it receive `401 Unauthorized`
+
+**If not set:** Admin endpoints are open and the server logs a warning at startup:
+```
+WARN: ADMIN_KEY is not set — admin endpoints are unprotected. Set ADMIN_KEY in production.
+```
+
+---
+
+### Generating Secure Keys
+
+Run this command to generate a cryptographically random key:
+
+```cmd
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Run it twice — once for `API_KEY`, once for `ADMIN_KEY`. Store both somewhere safe (a password manager or secrets vault). Example output:
+
+```
+a3f8c2e1d94b7f0e6a2d5c8b1e4f7a0d3c6b9e2f5a8d1c4b7e0f3a6d9c2b5e8
+```
 
 ---
 
