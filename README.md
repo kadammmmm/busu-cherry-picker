@@ -238,16 +238,18 @@ Upload to Control Hub: **Contact Center > Desktop Layouts**
 | `darkmode` | `false` | Sync with Agent Desktop dark mode. Use `"$STORE.app.darkMode"` |
 | `region` | `us1` | WxCC region: `us1`, `eu1`, `eu2`, `anz1`, `ca1`, `jp1`, `sg1` |
 | `refreshinterval` | `5` | Poll interval in seconds. Minimum recommended: `2` |
+| `maxtaskage` | `3600` | How far back (in seconds) to fetch tasks from the WxCC API. Calls older than this will disappear from the widget. Default is 1 hour. Increase for queues where calls may wait longer. |
 | `showstatuses` | `queued` | Comma-separated statuses to display: `queued`, `assigned`, `abandoned`, `completed`. Defaults to queued-only for a clean agent view. |
 | `displayfields` | see below | JSON array or comma-separated list of custom field keys to show on each card |
 
-**Example — show multiple statuses and custom fields:**
+**Example — show multiple statuses, custom fields, and extended task age:**
 ```json
 {
   "attributes": {
     "darkmode": "$STORE.app.darkMode",
     "region": "us1",
     "refreshinterval": "5",
+    "maxtaskage": "7200",
     "showstatuses": "queued,assigned",
     "displayfields": "[\"priority\", \"customerName\", \"callReason\"]"
   }
