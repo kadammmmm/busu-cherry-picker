@@ -174,12 +174,37 @@ You should see:
 
 Use this option if you need to host the service on your own infrastructure rather than a cloud provider.
 
-**Estimated Time:** 30–45 minutes  
-**Requirements:** Windows Server 2016 or later, outbound internet access to WxCC API endpoints, a public hostname or IP accessible by the Agent Desktop browsers
+**Estimated Time:** 15–30 minutes with the installer script, 30–45 minutes manually  
+**Requirements:** Windows Server 2016 or later, outbound internet access to WxCC API endpoints, a public hostname or IP accessible by Agent Desktop browsers
 
 ---
 
-### 3.1 Install Prerequisites
+### 3.0 Automated Install (Recommended)
+
+The distribution ZIP includes `install.ps1` — a PowerShell script that handles the entire setup automatically.
+
+**Steps:**
+1. Copy the ZIP to your Windows Server and unzip it
+2. Right-click `install.ps1` → **Run as Administrator**
+3. Follow the prompts:
+   - Checks for Node.js 18+ and offers to install it if missing
+   - Asks for install directory (default: `C:\inetpub\call-selector`)
+   - Asks for your server URL, WxCC CORS origins, and log level
+   - Generates secure API and Admin keys automatically (or lets you supply your own)
+   - Installs dependencies, starts the service via PM2, configures Windows auto-start, and opens the firewall port
+4. At the end the script prints your API key and the exact header to add to your WxCC flow
+
+**To get the distribution ZIP**, run from the repo root:
+```powershell
+.\scripts\package.ps1
+```
+This exports a clean ZIP from the `main` branch (no `node_modules`, no `.env`).
+
+If you prefer to set things up manually, follow the steps below.
+
+---
+
+### 3.1 Install Prerequisites (Manual)
 
 **Node.js 18+**
 
