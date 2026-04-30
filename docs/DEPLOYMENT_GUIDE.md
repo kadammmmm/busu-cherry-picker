@@ -357,6 +357,7 @@ Replace `[your-app-name]` and `[your-region]` with your values:
           "darkmode": "$STORE.app.darkMode",
           "region": "[your-region]",
           "refreshinterval": "5",
+          "maxtaskage": "3600",
           "showstatuses": "queued"
         },
         "properties": {
@@ -384,6 +385,7 @@ Replace `[your-app-name]` and `[your-region]` with your values:
 |-----------|---------|-------|
 | `region` | `us1` | Match your WxCC portal region |
 | `refreshinterval` | `5` | Poll interval in seconds |
+| `maxtaskage` | `3600` | How far back (in seconds) to fetch tasks. Calls older than this disappear. Increase if calls can wait longer than 1 hour. |
 | `showstatuses` | `queued` | Comma-separated: `queued`, `assigned`, `abandoned`, `completed` |
 | `displayfields` | standard set | JSON array of custom field keys to show |
 
