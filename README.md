@@ -67,6 +67,8 @@ The Call Selector Widget enables Webex Contact Center agents to view and selecti
 - Queues configured with `manuallyAssignable: true`
 - Multimedia Profile with manual assignment enabled
 
+See [REQUIREMENTS.md](REQUIREMENTS.md) for the complete minimum requirements checklist before you begin.
+
 ### 1. Clone and Install
 
 ```bash
@@ -132,6 +134,14 @@ docker run -d \
 ```bash
 docker-compose up -d
 ```
+
+### Option C.1: Windows Server (Automated Installer)
+
+1. Unzip the distribution package on your Windows Server
+2. Double-click `install.bat` (or right-click `install.ps1` → **Run as Administrator**)
+3. Follow the prompts — Node.js, PM2, firewall, and `.env` are all handled automatically
+
+See [DEPLOYMENT_GUIDE.md — Step 3](docs/DEPLOYMENT_GUIDE.md#step-3-deploy-to-windows-server) for full details.
 
 ### Option D: Manual Installation
 
