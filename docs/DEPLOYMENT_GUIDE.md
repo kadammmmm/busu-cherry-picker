@@ -49,6 +49,8 @@ This guide walks you through deploying the Call Selector Widget and configuring 
 
 ## Step 1: Prerequisites
 
+> Before starting, review [REQUIREMENTS.md](../REQUIREMENTS.md) for the complete minimum requirements checklist.
+
 ### Required Accounts
 
 | Account | Purpose | Sign Up |
@@ -185,7 +187,7 @@ The distribution ZIP includes `install.ps1` — a PowerShell script that handles
 
 **Steps:**
 1. Copy the ZIP to your Windows Server and unzip it
-2. Right-click `install.ps1` → **Run as Administrator**
+2. Double-click `install.bat` — it launches `install.ps1` automatically with the correct permissions. Alternatively, right-click `install.ps1` → **Run as Administrator**.
 3. Follow the prompts:
    - Checks for Node.js 18+ and offers to install it if missing
    - Asks for install directory (default: `C:\inetpub\call-selector`)
